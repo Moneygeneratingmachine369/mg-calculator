@@ -1,0 +1,4297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Myrmex Group · Budget Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<style>
+:root {
+  --dark-base: #08080E; --dark-mid: #0E0E16; --teal: #00978D;
+  --teal-dim: rgba(0,151,141,0.7); --orange: #EB5324; --orange-hover: #C94420;
+  --white: #FFFFFF; --border-glass: rgba(255,255,255,0.08);
+  --border-glass-strong: rgba(255,255,255,0.12);
+  --glass-bg: rgba(255,255,255,0.03); --glass-bg-card: rgba(255,255,255,0.05);
+  --font-brand: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
+  --font-data: 'IBM Plex Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+body { font-family: var(--font-body); font-weight: 400; color: var(--white); background: var(--dark-base); }
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; animation: fadeIn 200ms ease;
+}
+.modal-card {
+  background: #0E0E16; border: 1px solid rgba(0,151,141,0.3); border-radius: 10px; padding: 40px;
+  width: 480px; max-width: calc(100vw - 40px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+input[type=number] { -moz-appearance:textfield; }
+::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+button { -webkit-font-smoothing:antialiased; }
+.questions-card { overflow: visible !important; }
+.section-header { position: -webkit-sticky; position: sticky; top: 0px; z-index: 10; background: rgba(8,8,14,0.97); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {
+  useState,
+  useCallback,
+  useMemo
+} = React;
+
+// ── PRICING CONSTANTS ─────────────────────────────────────────
+const PRELIMS = {
+  z1: {
+    full: [12000, 22000],
+    partial: [6000, 13000],
+    'kit-bath': [3500, 7000],
+    'structural-only': [7000, 15000]
+  },
+  z2: {
+    full: [6000, 14000],
+    partial: [3000, 8000],
+    'kit-bath': [2000, 4500],
+    'structural-only': [4000, 10000]
+  },
+  z3: {
+    full: [4500, 10000],
+    partial: [2500, 6000],
+    'kit-bath': [1500, 3500],
+    'structural-only': [3000, 8000]
+  },
+  'z4-6': {
+    full: [3500, 8000],
+    partial: [2000, 5000],
+    'kit-bath': [1200, 3000],
+    'structural-only': [2500, 6000]
+  }
+};
+const FLOOR_MOD_P = {
+  1: 1,
+  2: 1.03,
+  3: 1.07,
+  4: 1.12,
+  5: 1.18
+};
+const FLOOR_MOD_S = {
+  1: 1,
+  2: 1.03,
+  3: 1.06,
+  4: 1.10,
+  5: 1.14
+};
+const ACCESS_MOD = {
+  easy: 1,
+  moderate: 1.08,
+  difficult: 1.18
+};
+// Demolition — dynamic by GIA, floors, property type, condition
+// partial = targeted strip (specific rooms/areas)
+// cosmetic = surface finishes only, no services exposure
+function calcDemo(scope, S) {
+  if (!scope || scope === 'cosmetic') return [0, 0];
+  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
+  const floors = S.floors || 1;
+  // Period properties have lath+plaster, old substrates, asbestos risk — higher rate
+  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
+  const isAged = S.lastRefurb === 'never' || S.lastRefurb === '20plus';
+  const typeMod = isPeriod ? 1.25 : 1.0;
+  const ageMod = isAged ? 1.15 : 1.0;
+  const floorMod = 1 + (floors - 1) * 0.10; // each additional floor adds skips + labour
+  if (scope === 'full') {
+    // Full strip to structure: base rate per m² + floor/type/age factors
+    const lo = Math.round(gia * 38 * typeMod * ageMod * floorMod);
+    const hi = Math.round(gia * 72 * typeMod * ageMod * floorMod);
+    return [lo, hi];
+  }
+  if (scope === 'targeted') {
+    // Targeted strip: priced by room count (bathrooms + kitchen + demoRooms)
+    const rooms = (S.bathrooms || 0) + (S.cloakrooms || 0) + (S.kitchenScope && S.kitchenScope !== 'none' ? 1 : 0) + (S.demoRooms || 0);
+    const rCount = Math.max(1, rooms);
+    const lo = Math.round(rCount * 600 * typeMod * ageMod);
+    const hi = Math.round(rCount * 1400 * typeMod * ageMod);
+    return [lo, hi];
+  }
+  return [0, 0];
+}
+const STRUCT_RATE = {
+  standard: [120, 180],
+  period: [160, 240]
+};
+const PERIOD_RESTORE_M2 = [18, 30];
+const PERIOD_RESTORE_ROOM = [300, 600];
+const PERIOD_MOD = {
+  'period-house': 1.12,
+  'period-flat': 1.12,
+  'newbuild-house': 1,
+  'newbuild-flat': 1,
+  'commercial': 1.08
+};
+const AGE_MOD = {
+  'pre1900': 1.12,
+  '1900-1960': 1.07,
+  '1960-2000': 1.03,
+  'post2000': 1
+};
+const LISTED_MOD = {
+  'none': 1,
+  'grade2': 1.08,
+  'grade2star': 1.10,
+  'grade1': 1.12
+};
+// Condition mod now driven by handover + lastRefurb combined
+// handover: empty/furnished/part-cleared
+// lastRefurb: never/20plus/10to20/5to10/recent
+const HANDOVER_MOD = {
+  'empty': 1,
+  'furnished': 1.05,
+  'part-cleared': 1.03
+};
+const REFURB_MOD = {
+  'never': 1.12,
+  '20plus': 1.10,
+  '10to20': 1.06,
+  '5to10': 1.02,
+  'recent': 1.0
+};
+const CEIL_RAD = {
+  standard: 1,
+  tall: 1.10,
+  'double-height': 1.25
+};
+const WINDOW_UNIT = {
+  none: [0, 0],
+  replace: [650, 1200],
+  new: [1500, 2800],
+  sash: [850, 1600]
+};
+const DOOR_COST = {
+  none: [0, 0],
+  front: [1500, 4000],
+  back: [1500, 4000],
+  both: [3000, 8000]
+};
+const ROOF_COST = {
+  none: [0, 0],
+  '1': [1200, 2500],
+  '2plus': [2400, 5000]
+};
+const ELEC_RATE = {
+  none: [0, 0],
+  partial: [22, 34],
+  'full-cu': [42, 62]
+};
+const SOCKET_COST = {
+  standard: [3, 6],
+  premium: [25, 60],
+  designer: [80, 200]
+};
+const SWITCH_COST = {
+  standard: [2, 5],
+  premium: [20, 55],
+  designer: [60, 180]
+};
+const ELEC_MIN = {
+  standard: 500,
+  premium: 1500,
+  designer: 4000
+};
+// Plumbing — dynamic by property size, room count, and floors
+// Note: bathroom sanitaryware/tiling costs are in the Bathrooms line — this covers pipework infrastructure only
+function calcPlumbing(scope, S) {
+  if (!scope || scope === 'none') return [0, 0];
+  const baths = (S.bathrooms || 0) + (S.cloakrooms || 0);
+  const beds = S.bedrooms || 1;
+  const floors = S.floors || 1;
+  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
+  // Vertical runs add cost per additional floor
+  const floorFactor = 1 + (floors - 1) * 0.12;
+  if (scope === 'partial') {
+    const lo = Math.round((1200 + baths * 400 + beds * 120) * floorFactor);
+    const hi = Math.round((2200 + baths * 700 + beds * 200) * floorFactor);
+    return [lo, hi];
+  }
+  if (scope === 'full') {
+    // Base scales with GIA — small flats have lower base connection cost
+    const base_lo = Math.round(400 + gia * 6);
+    const base_hi = Math.round(700 + gia * 10);
+    const lo = Math.round((base_lo + baths * 600 + beds * 180) * floorFactor);
+    const hi = Math.round((base_hi + baths * 1100 + beds * 320) * floorFactor);
+    return [lo, hi];
+  }
+  return [0, 0];
+}
+const BOILER_COST = {
+  keep: [0, 0],
+  replace: [1500, 3000],
+  combi: [2500, 4500],
+  system: [3200, 5800]
+};
+// Plumbing preview for UI labels — estimates range before full calc
+function plumbingPreview(scope, S) {
+  // If bathrooms not yet set, estimate from bedrooms (1 bath per 2 beds, min 1)
+  const estS = S.bathrooms > 0 ? S : {
+    ...S,
+    bathrooms: Math.max(1, Math.round((S.bedrooms || 1) / 2))
+  };
+  const r = calcPlumbing(scope, estS);
+  if (!r || r[1] === 0) return null;
+  const lo = Math.round(r[0] / 500) * 500;
+  const hi = Math.round(r[1] / 500) * 500;
+  return `£${lo >= 1000 ? (lo / 1000).toFixed(0) + 'k' : lo} – £${hi >= 1000 ? (hi / 1000).toFixed(0) + 'k' : hi}`;
+}
+
+// UFH rates per m²
+const UFH_RATE_WET = [80, 130];
+const UFH_RATE_ELEC = [40, 75];
+// UFH: zone implies type
+// wet-rooms-only = electric (bathrooms + tiled kitchen)
+// ground-floor   = wet system
+// whole-house    = wet system
+function calcUFH(S) {
+  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
+  const floors = S.floors || 1;
+  const bathrooms = S.bathrooms || 0;
+  const zone = S.ufhZone;
+  if (!zone || zone === 'none') return [0, 0];
+  if (zone === 'wet-rooms') {
+    // Electric UFH in bathrooms + kitchen if tiled
+    // Use minimum 1 bathroom if bathrooms not yet specified
+    const effectiveBaths = Math.max(1, bathrooms);
+    const kitchenM2 = S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? 8 : 0;
+    const m2 = effectiveBaths * 5 + kitchenM2;
+    return [Math.round(m2 * UFH_RATE_ELEC[0]), Math.round(m2 * UFH_RATE_ELEC[1])];
+  }
+  if (zone === 'ground-floor') {
+    // When single floor, ground-floor = whole property
+    const m2 = floors <= 1 ? gia : Math.round(gia / floors);
+    return [Math.round(m2 * UFH_RATE_WET[0]), Math.round(m2 * UFH_RATE_WET[1])];
+  }
+  if (zone === 'whole-house') {
+    return [Math.round(gia * UFH_RATE_WET[0]), Math.round(gia * UFH_RATE_WET[1])];
+  }
+  return [0, 0];
+}
+const MVHR_SIZE = {
+  small: [3500, 5000],
+  medium: [5000, 8000],
+  large: [8000, 12000]
+};
+const VENT_COST = {
+  none: [0, 0],
+  extractors: [600, 1800]
+};
+const SMART_COST = {
+  none: [0, 0],
+  basic: [1500, 4000],
+  full: [10000, 25000]
+};
+const RAD_COST = {
+  standard: [250, 450],
+  premium: [500, 1200],
+  designer: [1200, 3500]
+};
+const KIT_BASE = {
+  standard: {
+    small: [8000, 14000],
+    medium: [15000, 25000],
+    large: [22000, 38000]
+  },
+  premium: {
+    small: [20000, 35000],
+    medium: [38000, 60000],
+    large: [58000, 95000]
+  },
+  designer: {
+    small: [40000, 75000],
+    medium: [65000, 110000],
+    large: [100000, 180000]
+  }
+};
+const KIT_INSTALL = {
+  standard: {
+    small: [2500, 3000],
+    medium: [2800, 3500],
+    large: [3500, 4500]
+  },
+  premium: {
+    small: [3500, 4500],
+    medium: [4000, 5500],
+    large: [5000, 7000]
+  },
+  designer: {
+    small: [5000, 7000],
+    medium: [6500, 9000],
+    large: [8500, 13000]
+  }
+};
+const APP_COST = {
+  none: [0, 0],
+  standard: [3000, 7000],
+  premium: [8000, 15000],
+  full: [15000, 30000]
+};
+const KIT_DEDUCT = 12;
+const BATH_COST = {
+  standard: [9000, 14000],
+  premium: [18000, 30000],
+  designer: [35000, 60000]
+};
+const BATH_DED = [5, 4, 4, 3];
+const FREE_BATH = {
+  none: [0, 0],
+  '1': [1500, 3500],
+  '2plus': [3000, 7000]
+};
+const CLOAK_COST = {
+  standard: [3000, 4500],
+  premium: [5000, 8000],
+  designer: [8000, 14000]
+};
+const FURN_COST_PER_LM = {
+  standard: [1000, 1300],
+  premium: [1500, 2000],
+  designer: [2200, 3200]
+};
+const FURN_HEIGHT_MOD = {
+  'standard': 1.0,
+  'full': 1.15,
+  'tall': 1.30
+};
+const FLOOR_RATE = {
+  none: [0, 0],
+  'eng-wood': [48, 125],
+  'solid-wood': [85, 185],
+  mixed: [60, 145],
+  lvt: [35, 90],
+  carpet: [22, 60]
+};
+const DECO_RATE = {
+  none: [0, 0],
+  repaint: [25, 40],
+  'repaint-feature': [42, 68],
+  bespoke: [70, 125]
+};
+const SKIRT_RATE = {
+  keep: [0, 0],
+  standard: [26, 44],
+  bespoke: [52, 105]
+};
+const WALL_COST = [4500, 9500];
+const LOFT_RATE = [3800, 5200];
+const EXT_SINGLE = [3500, 4800];
+const EXT_DOUBLE = [4200, 5600];
+const BAS_FITOUT = [2500, 3500];
+const BAS_EXCAV = [3800, 6500];
+const BAS_ZONE1 = [5500, 9000];
+const EXT_COSTS = {
+  facade: [10000, 25000]
+};
+const GARDEN_RATE = {
+  small: [120, 200],
+  medium: [100, 170],
+  large: [85, 145]
+};
+const GARDEN_M2 = {
+  small: 60,
+  medium: 120,
+  large: 220
+};
+const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+const fmt = n => '£' + Math.round(n).toLocaleString('en-GB');
+const fmtR = (lo, hi) => `${fmt(lo)} – ${fmt(hi)}`;
+const sqftToM2 = v => v * 0.0929;
+const getM2 = (raw, unit) => unit === 'sqft' ? sqftToM2(raw) : raw;
+
+// ── WALL AREA INFERENCE ───────────────────────────────────────
+const LAYOUT_WALL_MOD = {
+  cellular: 1.40,
+  'semi-open': 1.15,
+  'open-plan': 0.80
+};
+const UPPER_FLOOR_DEFAULT = 1.40;
+const OPENING_PER_ROOM = 2.5;
+function calcWallArea(S) {
+  const gia = getM2(S.giaRaw, S.giaUnit);
+  if (!gia || !S.floors) return gia * 1.5;
+  const floors = S.floors || 1;
+  const floorPlate = gia / floors;
+  const extPerimeter = 4 * Math.sqrt(floorPlate);
+  const ceilH = S.ceilingHeight === 'tall' ? 2.9 : S.ceilingHeight === 'double-height' ? 3.8 : 2.4;
+  const gfMod = LAYOUT_WALL_MOD[S.gfLayout] || 1.15;
+  const rooms = deriveRooms(S);
+  const totalRoomCount = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
+  // Internal partitions: each room beyond open living area adds ~3m of partition wall
+  const partitionLength = Math.max(0, totalRoomCount - 2) * 3.0;
+  const gfWallLength = extPerimeter * Math.max(0.9, gfMod) + partitionLength;
+  const upperWallLength = (extPerimeter * UPPER_FLOOR_DEFAULT + partitionLength) * Math.max(0, floors - 1);
+  const totalWallLength = gfWallLength + upperWallLength;
+  const grossWall = totalWallLength * ceilH;
+  const openings = totalRoomCount * OPENING_PER_ROOM;
+  // Floor for wall area: always at least 1.4× GIA (realistic minimum)
+  return Math.max(gia * 1.4, grossWall - openings);
+}
+function calcSkirtingLM(S) {
+  const gia = getM2(S.giaRaw, S.giaUnit);
+  if (!gia || !S.floors) return gia * 0.55;
+  const floors = S.floors || 1;
+  const floorPlate = gia / floors;
+  const extPerimeter = 4 * Math.sqrt(floorPlate);
+  const gfMod = LAYOUT_WALL_MOD[S.gfLayout] || 1.15;
+  const rooms = deriveRooms(S);
+  const totalRoomCount = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
+  const partitionLength = Math.max(0, totalRoomCount - 2) * 3.0;
+  const gfLength = extPerimeter * Math.max(0.9, gfMod) + partitionLength;
+  const upperLength = (extPerimeter * UPPER_FLOOR_DEFAULT + partitionLength) * Math.max(0, floors - 1);
+  // Deduct door openings (each ~0.9m of skirting interrupted)
+  const doorDeduction = totalRoomCount * 0.9;
+  return Math.max(gia * 0.4, gfLength + upperLength - doorDeduction);
+}
+const CONT_RATES = {
+  prelims: 0.05,
+  demo: 0.15,
+  structWorks: 0.10,
+  structure: 0.12,
+  electrical: 0.10,
+  plumbing: 0.12,
+  mechanical: 0.08,
+  kitchen: 0.05,
+  bath: 0.05,
+  cloak: 0.05,
+  furn: 0.05,
+  finishes: 0.08,
+  fabric: 0.08,
+  ext: 0.05,
+  fees: 0.00
+};
+function calcProjectUplift(S) {
+  let u = 0;
+  if (S.listed === 'grade1') u += 0.07;else if (S.listed === 'grade2star') u += 0.05;else if (S.listed === 'grade2') u += 0.04;
+  if (S.lastRefurb === 'never') u += 0.04;else if (S.lastRefurb === '20plus') u += 0.03;
+  if (S.zone === 'z1') u += 0.02;
+  return u;
+}
+function getLBCFee(S) {
+  // GIA-based LBC fee — Grade II base, with multipliers for higher grades
+  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
+  let base;
+  if (gia <= 60) base = 5500;else if (gia <= 80) base = 7000;else if (gia <= 100) base = 9000;else if (gia <= 120) base = 11000;else if (gia <= 140) base = 14000;else if (gia <= 160) base = 16000;else if (gia <= 200) base = 20000;else if (gia <= 250) base = 25000;else if (gia <= 350) base = 30000;else base = 36000;
+  const gradeMultiplier = S.listed === 'grade1' ? 1.8 : S.listed === 'grade2star' ? 1.3 : 1.0;
+  return Math.round(base * gradeMultiplier);
+}
+function calcContingencyPerLine(lines, S) {
+  const uplift = calcProjectUplift(S);
+  let total = [0, 0];
+  Object.entries(lines).forEach(([key, val]) => {
+    const rate = Math.min(0.25, (CONT_RATES[key] || 0.08) + uplift);
+    total = [total[0] + Math.round(val[0] * rate), total[1] + Math.round(val[1] * rate)];
+  });
+  return total;
+}
+function getContRate(S) {
+  const base = S.scope === 'full' ? 0.10 : S.scope === 'partial' ? 0.08 : S.scope === 'kit-bath' ? 0.06 : 0.08;
+  return Math.min(0.20, base + calcProjectUplift(S));
+}
+function deriveRooms(S) {
+  const gia = getM2(S.giaRaw, S.giaUnit);
+  return {
+    bedrooms: S.bedrooms,
+    bathrooms: S.bathrooms,
+    cloakrooms: S.cloakrooms,
+    kitchen: S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? 1 : 0,
+    living: 1,
+    dining: gia >= 70 ? 1 : 0,
+    hallways: ['period-house', 'newbuild-house'].includes(S.propertyType) ? 2 : 1,
+    utility: gia >= 100 ? 1 : 0
+  };
+}
+function calcComponents(rooms, ceilH) {
+  const sockets = rooms.bedrooms * 4 + rooms.kitchen * 6 + rooms.living * 8 + rooms.dining * 6 + rooms.hallways * 2 + rooms.bathrooms * 1 + rooms.cloakrooms * 1 + rooms.utility * 3;
+  const switches = rooms.bedrooms * 2 + rooms.kitchen * 2 + rooms.living * 3 + rooms.dining * 3 + rooms.hallways * 2 + rooms.bathrooms * 1 + rooms.cloakrooms * 1 + rooms.utility * 1;
+  const raw = rooms.bedrooms * 1.5 + rooms.kitchen * 1 + rooms.living * 2 + rooms.dining * 1 + rooms.hallways * 1 + rooms.utility * 0.5;
+  return {
+    sockets,
+    switches,
+    radCount: Math.ceil(raw * (CEIL_RAD[ceilH] || 1))
+  };
+}
+
+// ── PARTIAL SCOPE MASK ───────────────────────────────────────────
+// Derives cost multipliers from partialAreas selection.
+// Returns: { giaFrac, includeKitchen, includeBath, includeCloak,
+//            includeFinishes, includeMEP, includeStructure }
+function calcPartialMask(S) {
+  if (S.scope !== 'partial' || !S.partialAreas || S.partialAreas.length === 0) {
+    // Full scope — everything at 100%
+    return {
+      giaFrac: 1,
+      includeKitchen: true,
+      includeBath: true,
+      includeCloak: true,
+      includeFinishes: true,
+      includeMEP: true,
+      includeStructure: true,
+      plumbFrac: 1,
+      elecFrac: 1
+    };
+  }
+  const a = S.partialAreas;
+  const floors = S.floors || 1;
+
+  // GIA fraction — what proportion of the property is being worked on
+  let giaFrac = 0;
+  if (a.includes('living')) giaFrac += 0.30;
+  if (a.includes('bedrooms')) giaFrac += 0.40;
+  if (a.includes('master')) giaFrac += Math.min(0.20, 0.40 / Math.max(1, S.bedrooms));
+  if (a.includes('one-floor')) giaFrac += 1 / floors;
+  if (a.includes('kitchen')) giaFrac += 0.12;
+  if (a.includes('bathrooms')) giaFrac += 0.10;
+  if (a.includes('excl-bathrooms')) giaFrac += 0.85;
+  if (a.includes('services-only')) giaFrac = 1.0; // MEP runs whole property
+
+  // Cap at 1.0, floor at 0.10
+  giaFrac = Math.min(1.0, Math.max(0.10, giaFrac));
+
+  // Fixed-cost line inclusions
+  const includeKitchen = a.includes('kitchen') || a.includes('one-floor') || a.includes('excl-bathrooms');
+  const includeBath = a.includes('bathrooms') || a.includes('one-floor');
+  const includeCloak = a.includes('bathrooms') || a.includes('one-floor');
+  const includeFinishes = !a.includes('services-only');
+  const includeMEP = true; // MEP always included in partial — main reason to do it
+  const includeStructure = true; // Structural items are always explicitly chosen
+
+  // MEP fractions — services run the whole property regardless of area
+  const elecFrac = a.includes('services-only') ? 1.0 : giaFrac;
+  const plumbFrac = a.includes('services-only') ? 1.0 : includeBath ? 1.0 : 0.5;
+  return {
+    giaFrac,
+    includeKitchen,
+    includeBath,
+    includeCloak,
+    includeFinishes,
+    includeMEP,
+    includeStructure,
+    plumbFrac,
+    elecFrac
+  };
+}
+function recalc(S) {
+  var _PRELIMS$S$zone;
+  const gia = getM2(S.giaRaw, S.giaUnit);
+  if (!gia || !S.zone || !S.scope) return null;
+  const baseMod = (PERIOD_MOD[S.propertyType] || 1) * (AGE_MOD[S.buildingAge] || 1) * (LISTED_MOD[S.listed] || 1) * (HANDOVER_MOD[S.handover] || 1) * (REFURB_MOD[S.lastRefurb] || 1);
+  const flP = FLOOR_MOD_P[S.floors] || 1;
+  const flS = FLOOR_MOD_S[S.floors] || 1;
+  const accM = ACCESS_MOD[S.access] || 1;
+  const wallArea = calcWallArea(S);
+  const skirtingLM = calcSkirtingLM(S);
+
+  // Partial scope mask — scales cost lines based on partialAreas selection
+  const pm = calcPartialMask(S);
+  let bathDed = 0;
+  for (let i = 0; i < S.bathrooms; i++) {
+    var _BATH_DED$i;
+    bathDed += (_BATH_DED$i = BATH_DED[i]) !== null && _BATH_DED$i !== void 0 ? _BATH_DED$i : 3;
+  }
+  const cloakDed = S.cloakrooms * 2;
+  const kitDed = S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout' ? KIT_DEDUCT : 0;
+  // Apply GIA fraction for partial scope
+  const rawNetGIA = Math.max(10, gia - bathDed - cloakDed - kitDed);
+  const netGIA = S.scope === 'partial' ? Math.max(10, rawNetGIA * pm.giaFrac) : rawNetGIA;
+  // Flooring GIA: include kitchen (deduct bathrooms only) — kitchen floor IS in scope
+  const flooringGIA = S.scope === 'partial' ? Math.max(10, (gia - bathDed - cloakDed) * pm.giaFrac) : Math.max(10, gia - bathDed - cloakDed);
+  const sKey = S.scope === 'structural-only' ? 'structural-only' : S.scope === 'full' ? 'full' : S.scope === 'partial' ? 'partial' : 'kit-bath';
+  const pB = ((_PRELIMS$S$zone = PRELIMS[S.zone]) === null || _PRELIMS$S$zone === void 0 ? void 0 : _PRELIMS$S$zone[sKey]) || [5000, 12000];
+  const prelims = [pB[0] * flP * accM, pB[1] * flP * accM];
+  let demo = calcDemo(S.demo, S);
+  let structWorks = [0, 0];
+  if (S.structural.includes('walls')) structWorks = add(structWorks, WALL_COST);
+  const lM2 = getM2(S.loftRaw, S.loftUnit);
+  const eM2 = getM2(S.extRaw, S.extUnit);
+  const bM2 = getM2(S.basRaw, S.basUnit);
+  if (S.structural.includes('loft') && lM2 > 0) structWorks = add(structWorks, [lM2 * LOFT_RATE[0], lM2 * LOFT_RATE[1]]);
+  if (S.structural.includes('extension') && eM2 > 0) {
+    const r = S.storeys === 'double' ? EXT_DOUBLE : EXT_SINGLE;
+    structWorks = add(structWorks, [eM2 * r[0], eM2 * r[1]]);
+  }
+  if (S.structural.includes('basement') && bM2 > 0) {
+    const r = S.basType === 'excavation' ? S.zone === 'z1' ? BAS_ZONE1 : BAS_EXCAV : BAS_FITOUT;
+    structWorks = add(structWorks, [bM2 * r[0], bM2 * r[1]]);
+  }
+  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
+  const sR = isPeriod ? STRUCT_RATE.period : STRUCT_RATE.standard;
+  const floorComp = netGIA * 0.6;
+  const plasterComp = wallArea * 0.12;
+  const structBaseMod = isPeriod ? baseMod / (PERIOD_MOD[S.propertyType] || 1) : baseMod;
+  let structure = [floorComp * sR[0] * structBaseMod * flS + plasterComp * sR[0] * structBaseMod * flS, floorComp * sR[1] * structBaseMod * flS + plasterComp * sR[1] * structBaseMod * flS];
+  if (S.periodFeatures === 'yes' && isPeriod) {
+    const rooms = deriveRooms(S);
+    const tr = rooms.bedrooms + rooms.living + rooms.dining + rooms.kitchen + rooms.hallways;
+    structure = add(structure, [gia * PERIOD_RESTORE_M2[0] + tr * PERIOD_RESTORE_ROOM[0], gia * PERIOD_RESTORE_M2[1] + tr * PERIOD_RESTORE_ROOM[1]]);
+  }
+  const eR = ELEC_RATE[S.electrical] || [0, 0];
+  const rooms = deriveRooms(S);
+  const {
+    sockets,
+    switches,
+    radCount
+  } = calcComponents(rooms, S.ceilingHeight);
+  let eFin = [0, 0];
+  if (S.elecFinish && S.elecFinish !== 'na') {
+    const sc = SOCKET_COST[S.elecFinish] || [0, 0];
+    const sw = SWITCH_COST[S.elecFinish] || [0, 0];
+    const rL = sockets * sc[0] + switches * sw[0];
+    const rH = sockets * sc[1] + switches * sw[1];
+    eFin = [Math.max(ELEC_MIN[S.elecFinish] || 0, rL * 1.15), rH * 1.15];
+  }
+  let electrical = [netGIA * eR[0] + eFin[0], netGIA * eR[1] + eFin[1]];
+  const plumbingRaw = calcPlumbing(S.plumbing, S);
+  const plumbing = S.scope === 'partial' ? [Math.round(plumbingRaw[0] * pm.plumbFrac), Math.round(plumbingRaw[1] * pm.plumbFrac)] : plumbingRaw;
+  let mechanical = add([0, 0], BOILER_COST[S.boiler] || [0, 0]);
+  {
+    const ufhCost = calcUFH(S);
+    if (ufhCost[1] > 0) mechanical = add(mechanical, ufhCost);
+  }
+  if (S.ventilation === 'mvhr') {
+    const sz = S.bathrooms <= 1 ? 'small' : S.bathrooms <= 2 ? 'medium' : 'large';
+    const rf = S.buildingAge === 'pre1900' || S.buildingAge === '1900-1960' || S.lastRefurb === 'never' || S.lastRefurb === '20plus' ? 1.3 : 1;
+    const m = MVHR_SIZE[sz];
+    mechanical = add(mechanical, [m[0] * rf, m[1] * rf]);
+  } else mechanical = add(mechanical, VENT_COST[S.ventilation] || [0, 0]);
+  mechanical = add(mechanical, SMART_COST[S.smart] || [0, 0]);
+  if (S.replaceRads === 'yes' && S.radTier && S.radCount > 0) {
+    const rc = RAD_COST[S.radTier] || [0, 0];
+    mechanical = add(mechanical, [S.radCount * rc[0], S.radCount * rc[1]]);
+  }
+  let kitchen = [0, 0];
+  if ((S.scope !== 'partial' || pm.includeKitchen) && (S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout')) {
+    var _KIT_BASE$t, _KIT_INSTALL$t, _KIT_INSTALL$t2;
+    const t = S.kitTier || 'standard';
+    const sz = S.kitSize || 'medium';
+    kitchen = add(kitchen, ((_KIT_BASE$t = KIT_BASE[t]) === null || _KIT_BASE$t === void 0 ? void 0 : _KIT_BASE$t[sz]) || [15000, 25000]);
+    kitchen = add(kitchen, APP_COST[S.appliances] || [0, 0]);
+    kitchen = add(kitchen, ((_KIT_INSTALL$t = KIT_INSTALL[t]) === null || _KIT_INSTALL$t === void 0 ? void 0 : _KIT_INSTALL$t[sz]) || ((_KIT_INSTALL$t2 = KIT_INSTALL[t]) === null || _KIT_INSTALL$t2 === void 0 ? void 0 : _KIT_INSTALL$t2.medium) || [2500, 3500]);
+  }
+  let bath = [0, 0];
+  if ((S.scope !== 'partial' || pm.includeBath) && S.bathrooms > 0) {
+    const bT = S.bathTier || 'standard';
+    const bC = BATH_COST[bT] || BATH_COST.standard;
+    bath = [bC[0] * S.bathrooms, bC[1] * S.bathrooms];
+  }
+  if (S.scope !== 'partial' || pm.includeBath) bath = add(bath, FREE_BATH[S.freestandingBath] || [0, 0]);
+  let cloak = [0, 0];
+  if ((S.scope !== 'partial' || pm.includeCloak) && S.cloakrooms > 0) {
+    const cT = S.bathTier || 'standard';
+    const cC = CLOAK_COST[cT] || CLOAK_COST.standard;
+    cloak = [cC[0] * S.cloakrooms, cC[1] * S.cloakrooms];
+  }
+  let furn = [0, 0];
+  if (S.bespokeFurniture === 'yes' && S.furnitureLM > 0 && S.furnitureTier && S.furnitureHeight) {
+    const r = FURN_COST_PER_LM[S.furnitureTier] || [0, 0];
+    const hm = FURN_HEIGHT_MOD[S.furnitureHeight] || 1;
+    furn = [Math.round(r[0] * S.furnitureLM * hm), Math.round(r[1] * S.furnitureLM * hm)];
+  }
+  let finishes = [0, 0];
+  if (S.scope !== 'partial' || pm.includeFinishes) {
+    const fr = FLOOR_RATE[S.flooring] || [0, 0];
+    const dr = DECO_RATE[S.decoration] || [0, 0];
+    const sr = SKIRT_RATE[S.skirtings] || [0, 0];
+    // Wall area and skirting also scaled by giaFrac for partial scope
+    const partialWall = S.scope === 'partial' ? wallArea * pm.giaFrac : wallArea;
+    const partialSk = S.scope === 'partial' ? skirtingLM * pm.giaFrac : skirtingLM;
+    finishes = add(finishes, [flooringGIA * fr[0], flooringGIA * fr[1]]);
+    finishes = add(finishes, [partialWall * dr[0], partialWall * dr[1]]);
+    finishes = add(finishes, [partialSk * sr[0], partialSk * sr[1]]);
+  }
+  let fabric = [0, 0];
+  // Windows — multi-type, each priced separately
+  if (S.windowTypes && S.windowTypes.includes('replace') && S.replaceCount > 0) {
+    const r = WINDOW_UNIT.replace;
+    fabric = add(fabric, [r[0] * S.replaceCount, r[1] * S.replaceCount]);
+  }
+  if (S.windowTypes && S.windowTypes.includes('new') && S.newOpenings > 0) {
+    const r = WINDOW_UNIT.new;
+    fabric = add(fabric, [r[0] * S.newOpenings, r[1] * S.newOpenings]);
+  }
+  if (S.windowTypes && S.windowTypes.includes('sash') && S.sashCount > 0) {
+    const r = WINDOW_UNIT.sash;
+    fabric = add(fabric, [r[0] * S.sashCount, r[1] * S.sashCount]);
+  }
+  if (S.doors && S.doors !== 'none') fabric = add(fabric, DOOR_COST[S.doors] || [0, 0]);
+  if (S.rooflights && S.rooflights !== 'none') fabric = add(fabric, ROOF_COST[S.rooflights] || [0, 0]);
+  let ext = [0, 0];
+  if (S.external.includes('garden') && S.gardenSize) {
+    const gr = GARDEN_RATE[S.gardenSize];
+    const gm2 = GARDEN_M2[S.gardenSize];
+    ext = add(ext, [gm2 * gr[0], gm2 * gr[1]]);
+  }
+  if (S.external.includes('facade')) ext = add(ext, EXT_COSTS.facade);
+  let feeLo = 500,
+    feeHi = 1200;
+  if (S.tenure === 'leasehold') {
+    feeLo += 2500;
+    feeHi += 8000;
+  }
+  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
+  const effArr = ['period-flat', 'newbuild-flat', 'commercial'].includes(S.propertyType) ? 'flat' : S.arrangement;
+  if (hasStruct && ['semi', 'terrace', 'flat'].includes(effArr)) {
+    feeLo += 900;
+    feeHi += 2500;
+  }
+  if (S.listed && S.listed !== 'none') {
+    const lbcF = getLBCFee(S);
+    feeLo += Math.round(lbcF * 0.75);
+    feeHi += Math.round(lbcF * 1.25);
+  }
+  if (hasStruct) {
+    feeLo += 800;
+    feeHi += 1500;
+  }
+  // Scope masking — zero out lines irrelevant to selected scope
+  if (S.scope === 'kit-bath') {
+    structure = [0, 0]; structWorks = [0, 0]; demo = [0, 0];
+    finishes = [0, 0]; furn = [0, 0]; fabric = [0, 0]; ext = [0, 0];
+  }
+  if (S.scope === 'structural-only') {
+    kitchen = [0, 0]; bath = [0, 0]; cloak = [0, 0];
+    finishes = [0, 0]; furn = [0, 0];
+  }
+  const subBF = [prelims[0] + demo[0] + structWorks[0] + structure[0] + electrical[0] + plumbing[0] + mechanical[0] + kitchen[0] + bath[0] + cloak[0] + furn[0] + finishes[0] + fabric[0] + ext[0], prelims[1] + demo[1] + structWorks[1] + structure[1] + electrical[1] + plumbing[1] + mechanical[1] + kitchen[1] + bath[1] + cloak[1] + furn[1] + finishes[1] + fabric[1] + ext[1]];
+  if (S.scope === 'full' || S.scope === 'partial') {
+    feeLo += Math.max(500, Math.round(subBF[0] * 0.005));
+    feeHi += Math.max(800, Math.round(subBF[1] * 0.008));
+  }
+  const fees = [feeLo, feeHi];
+  let sub = [0, 0];
+  [prelims, demo, structWorks, structure, electrical, plumbing, mechanical, kitchen, bath, cloak, furn, finishes, fabric, ext, fees].forEach(c => sub = add(sub, c));
+  const cont = calcContingencyPerLine({
+    prelims,
+    demo,
+    structWorks,
+    structure,
+    electrical,
+    plumbing,
+    mechanical,
+    kitchen,
+    bath,
+    cloak,
+    furn,
+    finishes,
+    fabric,
+    ext,
+    fees
+  }, S);
+  const cr = getContRate(S);
+  const total = add(sub, cont);
+  const timeline = calcTimeline(S);
+  return {
+    prelims,
+    demo,
+    structWorks,
+    structure,
+    electrical,
+    plumbing,
+    mechanical,
+    kitchen,
+    bath,
+    cloak,
+    furn,
+    finishes,
+    fabric,
+    ext,
+    fees,
+    cont,
+    total,
+    cr,
+    netGIA,
+    wallArea: Math.round(wallArea),
+    skirtingLM: Math.round(skirtingLM),
+    sockets,
+    switches,
+    radCount,
+    low: total[0],
+    mid: (total[0] + total[1]) / 2,
+    high: total[1],
+    timeline
+  };
+}
+
+// ── DETAILED BREAKDOWN ────────────────────────────────────────
+// Returns sub-component tree for PDF output.
+// Midpoints at line level, ranges at section level.
+function calcDetailedBreakdown(S, est) {
+  var _S$zone, _S$zone2, _S$windowTypes, _S$windowTypes2, _S$windowTypes3;
+  if (!est) return null;
+  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
+  const floors = S.floors || 1;
+  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
+  const isAged = S.lastRefurb === 'never' || S.lastRefurb === '20plus';
+  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
+  const mid = ([lo, hi]) => Math.round((lo + hi) / 2);
+  const rng = ([lo, hi]) => `£${Math.round(lo).toLocaleString('en-GB')} – £${Math.round(hi).toLocaleString('en-GB')}`;
+  const fmtM = n => n > 0 ? `£${Math.round(n).toLocaleString('en-GB')}` : '—';
+  const pct = n => `${Math.round(n * 100)}%`;
+
+  // ── PRELIMINARIES ──
+  const prelimTotal = est.prelims;
+  const prelimMid = mid(prelimTotal);
+  const prelim_pm = Math.round(prelimMid * 0.45);
+  const prelim_rams = Math.round(prelimMid * 0.09);
+  // Site setup scales down for internal-only projects (no hoarding, no scaffold)
+  const hasExternalWork = hasStruct || S.external && S.external.length > 0;
+  const setupPct = hasExternalWork ? 0.16 : 0.09;
+  const prelim_setup = Math.max(600, Math.round(prelimMid * setupPct));
+  // Materials logistics: 8% of prelims, capped — this is coordination overhead not materials cost
+  const logisticsCap = Math.max(600, Math.round(gia * 12)); // ~£720 per 60m², £1,440 per 120m²
+  const prelim_logistics = Math.min(logisticsCap, Math.round(prelimMid * 0.08));
+  // Insurance: ~£200-250/month for contractor all-risk on a residential project
+  // Programme months derived from GIA: small flat ~3-4 months, large house ~6-8 months
+  const progMonths = Math.max(3, Math.round(gia / 25));
+  const prelim_insurance = Math.min(Math.max(600, progMonths * 225), 1800);
+  const prelim_other = prelim_insurance; // insurance is the 'other' line
+  const prelimLines = [{
+    label: 'Site management & project manager',
+    note: `Zone ${((_S$zone = S.zone) === null || _S$zone === void 0 ? void 0 : _S$zone.toUpperCase()) || '—'} rate · programme, procurement, subcontractor coordination, client reporting`,
+    value: prelim_pm
+  }, {
+    label: 'RAMS, H&S documentation & CDM',
+    note: 'Statutory requirement',
+    value: prelim_rams
+  }, {
+    label: `Site setup & welfare`,
+    note: `Dust protection, welfare box, skip permits, PPE, signage${hasExternalWork ? ' · hoarding & temporary works' : ''}`,
+    value: prelim_setup
+  }, {
+    label: 'Materials logistics & delivery coordination',
+    note: `Zone ${((_S$zone2 = S.zone) === null || _S$zone2 === void 0 ? void 0 : _S$zone2.toUpperCase()) || '—'} logistics`,
+    value: prelim_logistics
+  }, {
+    label: 'Contractor All-Risk insurance',
+    note: `~£225/month × ${Math.max(3, Math.round(gia / 25))} month programme`,
+    value: prelim_other
+  }];
+
+  // ── STRIP-OUT & DEMOLITION ──
+  const demoTotal = est.demo;
+  const demoMid = mid(demoTotal);
+  let demoLines = [];
+  if (demoMid > 0) {
+    const isPeriodDemo = ['period-house', 'period-flat'].includes(S.propertyType);
+    const skipCount = S.demo === 'full' ? Math.max(2, Math.ceil(gia / 12) + (isPeriodDemo ? 1 : 0)) : S.demo === 'targeted' ? Math.max(1, Math.ceil(gia / 30) + (isPeriodDemo ? 1 : 0)) : 1;
+    const labourShare = Math.round(demoMid * 0.55);
+    const skipShare = Math.round(demoMid * 0.25);
+    const asbestos = S.buildingAge === 'pre1900' || S.buildingAge === '1900-1960' ? Math.round(demoMid * 0.12) : 0;
+    const disposal = demoMid - labourShare - skipShare - asbestos;
+    demoLines = [{
+      label: 'Demolition labour',
+      note: S.demo === 'full' ? 'Full strip to structure' : 'Targeted rooms',
+      value: labourShare
+    }, {
+      label: `Skip hire (est. ${skipCount} skips)`,
+      note: 'Includes transport & tipping',
+      value: skipShare
+    }, ...(asbestos > 0 ? [{
+      label: 'Asbestos survey & management',
+      note: 'Pre-1960 property — statutory',
+      value: asbestos
+    }] : []), {
+      label: 'Specialist disposal & making good',
+      note: 'Waste segregation, temporary protection',
+      value: disposal
+    }];
+  }
+
+  // ── STRUCTURE ──
+  const structTotal = est.structure;
+  const structMid = mid(structTotal);
+  const floorComp = Math.round(structMid * 0.60);
+  const plasterComp = Math.round(structMid * 0.32);
+  const periodComp = S.periodFeatures === 'yes' && isPeriod ? Math.round(structMid * 0.08) : 0;
+  const structLines = [{
+    label: 'Floor-based works',
+    note: `Screeding, door frames, ceiling, structural fixes · ${Math.round(est.netGIA)}m² net`,
+    value: floorComp
+  }, {
+    label: 'Plastering & making good',
+    note: `Inferred wall area: ${est.wallArea}m²`,
+    value: plasterComp
+  }, ...(periodComp > 0 ? [{
+    label: 'Period feature restoration',
+    note: 'Cornicing, ceiling roses, dado/picture rails',
+    value: periodComp
+  }] : [])];
+
+  // ── STRUCTURAL WORKS (extensions, loft etc) ──
+  const sWorkTotal = est.structWorks;
+  const sWorkMid = mid(sWorkTotal);
+  let sWorkLines = [];
+  if (sWorkMid > 0) {
+    if (S.structural.includes('walls')) sWorkLines.push({
+      label: 'Wall removal(s)',
+      note: 'RSJ supply, installation, lateral restraint, making good',
+      value: mid(WALL_COST)
+    });
+    const lM2 = getM2(S.loftRaw, S.loftUnit) || 0;
+    const eM2 = getM2(S.extRaw, S.extUnit) || 0;
+    const bM2 = getM2(S.basRaw, S.basUnit) || 0;
+    if (S.structural.includes('loft') && lM2 > 0) {
+      const r = LOFT_RATE;
+      sWorkLines.push({
+        label: `Loft conversion (${lM2}m²)`,
+        note: 'Structure, roofing, dormer or velux, staircase allowance',
+        value: Math.round(lM2 * mid(r))
+      });
+    }
+    if (S.structural.includes('extension') && eM2 > 0) {
+      const r = S.storeys === 'double' ? EXT_DOUBLE : EXT_SINGLE;
+      sWorkLines.push({
+        label: `Extension — ${S.storeys || 'single'} storey (${eM2}m²)`,
+        note: 'Foundations, frame, roof, external envelope — shell only',
+        value: Math.round(eM2 * mid(r))
+      });
+    }
+    if (S.structural.includes('basement') && bM2 > 0) {
+      const r = S.basType === 'excavation' ? S.zone === 'z1' ? BAS_ZONE1 : BAS_EXCAV : BAS_FITOUT;
+      sWorkLines.push({
+        label: `Basement — ${S.basType || 'fit-out'} (${bM2}m²)`,
+        note: S.basType === 'excavation' ? 'Excavation, underpinning, waterproofing, slab' : 'Fit-out of existing void — waterproofing, slab, services',
+        value: Math.round(bM2 * mid(r))
+      });
+    }
+  }
+
+  // ── ELECTRICAL ──
+  const elecTotal = est.electrical;
+  const elecMid = mid(elecTotal);
+  const eR = ELEC_RATE[S.electrical] || [0, 0];
+  const firstFixVal = Math.round(est.netGIA * mid(eR));
+  const finishVal = elecMid - firstFixVal;
+  let elecLines = [];
+  if (elecMid > 0) {
+    elecLines = [{
+      label: `${S.electrical === 'full-cu' ? 'Full rewire + consumer unit' : 'Partial rewire'} — first fix`,
+      note: `${Math.round(est.netGIA)}m² × £${mid(eR)}/m²`,
+      value: firstFixVal
+    }, ...(finishVal > 0 ? [{
+      label: `Electrical finishes — ${S.elecFinish || 'standard'}`,
+      note: `${est.sockets} sockets, ${est.switches} switches — ${S.elecFinish === 'designer' ? 'Buster+Punch/Lutron' : S.elecFinish === 'premium' ? 'Varilight/Hamilton' : 'MK Logic/BG'}`,
+      value: finishVal
+    }] : [])];
+  }
+
+  // ── PLUMBING ──
+  const plumbTotal = est.plumbing;
+  const plumbMid = mid(plumbTotal);
+  const baths = (S.bathrooms || 0) + (S.cloakrooms || 0);
+  const beds = S.bedrooms || 1;
+  const floorFactor = 1 + (floors - 1) * 0.12;
+  let plumbLines = [];
+  if (plumbMid > 0) {
+    const baseVal = Math.round(plumbMid * (1800 / ((1800 + baths * 800 + beds * 250) * Math.max(1, gia / 80) * floorFactor)) || 0.25);
+    const bathVal = Math.round(plumbMid * 0.45);
+    const bedVal = Math.round(plumbMid * 0.20);
+    const flrVal = plumbMid - baseVal - bathVal - bedVal;
+    plumbLines = [{
+      label: 'Cold feed, mains connection & isolation',
+      note: 'Stop valve, service connections, pressure regulation',
+      value: Math.max(0, baseVal)
+    }, {
+      label: `Bathroom supply & waste runs (×${baths})`,
+      note: 'Hot/cold supply, soil & waste stack connections',
+      value: Math.max(0, bathVal)
+    }, {
+      label: `Bedroom heating feeds (×${beds})`,
+      note: 'Radiator circuit spurs and zone controls',
+      value: Math.max(0, bedVal)
+    }, ...(flrVal > 0 ? [{
+      label: `Multi-floor vertical runs`,
+      note: `${floors} floors · +${Math.round((floorFactor - 1) * 100)}% uplift`,
+      value: flrVal
+    }] : [])];
+  }
+
+  // ── MECHANICAL ──
+  const mechTotal = est.mechanical;
+  const mechMid = mid(mechTotal);
+  let mechLines = [];
+  if (S.boiler && S.boiler !== 'keep') mechLines.push({
+    label: `Boiler — ${S.boiler}`,
+    note: 'Supply, installation, commissioning, flue',
+    value: mid(BOILER_COST[S.boiler] || [0, 0])
+  });
+  if (S.ufhZone && S.ufhZone !== 'none') {
+    const ufhCost = calcUFH(S);
+    const ufhMid = mid(ufhCost);
+    const ufhType = S.ufhZone === 'wet-rooms' ? 'Electric' : 'Wet';
+    const ufhArea = S.ufhZone === 'wet-rooms' ? `${Math.max(1, S.bathrooms || 1) * 5}m² (wet rooms)` : S.ufhZone === 'ground-floor' ? `${Math.round(gia / floors)}m² (ground floor)` : `${Math.round(gia)}m² (whole house)`;
+    mechLines.push({
+      label: `UFH — ${ufhType} (${S.ufhZone})`,
+      note: `${ufhArea} · £${S.ufhZone === 'wet-rooms' ? '40–75' : '80–130'}/m²`,
+      value: ufhMid
+    });
+  }
+  if (S.ventilation === 'mvhr') {
+    const sz = S.bathrooms <= 1 ? 'small' : S.bathrooms <= 2 ? 'medium' : 'large';
+    mechLines.push({
+      label: 'MVHR system',
+      note: `${sz.charAt(0).toUpperCase() + sz.slice(1)} unit · heat recovery ventilation`,
+      value: mid(MVHR_SIZE[sz])
+    });
+  } else if (S.ventilation === 'extractors') {
+    mechLines.push({
+      label: 'Extractor fans',
+      note: 'Kitchen + bathroom extracts',
+      value: mid(VENT_COST.extractors)
+    });
+  }
+  if (S.smart && S.smart !== 'none') mechLines.push({
+    label: `Smart home / AV — ${S.smart}`,
+    note: S.smart === 'full' ? 'Full AV, lighting control, network' : 'Basic smart controls',
+    value: mid(SMART_COST[S.smart])
+  });
+  if (S.replaceRads === 'yes' && S.radCount > 0 && S.radTier) {
+    const rc = RAD_COST[S.radTier];
+    mechLines.push({
+      label: `Radiators × ${S.radCount} — ${S.radTier}`,
+      note: `${fmtM(rc[0])}–${fmtM(rc[1])} per unit · supply and installation`,
+      value: S.radCount * mid(rc)
+    });
+  }
+
+  // ── KITCHEN ──
+  const kitTotal = est.kitchen;
+  const kitMid = mid(kitTotal);
+  let kitLines = [];
+  if (kitMid > 0 && S.kitTier && S.kitSize) {
+    var _KIT_BASE$S$kitTier, _KIT_INSTALL$S$kitTie;
+    const kBase = ((_KIT_BASE$S$kitTier = KIT_BASE[S.kitTier]) === null || _KIT_BASE$S$kitTier === void 0 ? void 0 : _KIT_BASE$S$kitTier[S.kitSize]) || [0, 0];
+    const kSz = S.kitSize || 'medium';
+    const kInst = ((_KIT_INSTALL$S$kitTie = KIT_INSTALL[S.kitTier]) === null || _KIT_INSTALL$S$kitTie === void 0 ? void 0 : _KIT_INSTALL$S$kitTie[kSz]) || [2500, 3500];
+    const kApp = APP_COST[S.appliances] || [0, 0];
+    kitLines = [{
+      label: `Kitchen units — ${S.kitTier} (${S.kitSize})`,
+      note: S.kitTier === 'designer' ? 'Bulthaup / Poliform / SieMatic' : S.kitTier === 'premium' ? 'Leicht / Hacker / Tom Howley' : 'Howdens / Magnet / Wren',
+      value: mid(kBase)
+    }, {
+      label: 'Installation labour',
+      note: 'Unit hanging, worktop templating, plinth, cornicing',
+      value: mid(kInst)
+    }, ...(mid(kApp) > 0 ? [{
+      label: `Appliances — ${S.appliances}`,
+      note: S.appliances === 'premium' ? 'Miele / Gaggenau' : S.appliances === 'standard' ? 'Bosch / Neff' : 'Fully specified package',
+      value: mid(kApp)
+    }] : [])];
+  }
+
+  // ── BATHROOMS ──
+  const bathTotal = est.bath;
+  const bathMid = mid(bathTotal);
+  let bathLines = [];
+  if (S.bathrooms > 0 && S.bathTier) {
+    const bC = BATH_COST[S.bathTier];
+    bathLines.push({
+      label: `Full bathrooms × ${S.bathrooms} — ${S.bathTier}`,
+      note: S.bathTier === 'designer' ? 'V+A / Dornbracht / Bisazza' : S.bathTier === 'premium' ? 'Duravit / Geberit / Hansgrohe Metropol' : 'Roca / Ideal Standard / Grohe',
+      value: S.bathrooms * mid(bC)
+    });
+    if (S.freestandingBath && S.freestandingBath !== 'none') bathLines.push({
+      label: 'Freestanding bath uplift',
+      note: 'Premium bath supply and specialist plumber fit',
+      value: mid(FREE_BATH[S.freestandingBath])
+    });
+    if (S.cloakrooms > 0) bathLines.push({
+      label: `Cloakrooms × ${S.cloakrooms}`,
+      note: 'WC + basin only — at bathroom tier rate',
+      value: mid(est.cloak)
+    });
+  }
+
+  // ── FINISHES ──
+  const finishTotal = est.finishes;
+  const finishMid = mid(finishTotal);
+  let finishLines = [];
+  if (finishMid > 0) {
+    const fr = FLOOR_RATE[S.flooring] || [0, 0];
+    const dr = DECO_RATE[S.decoration] || [0, 0];
+    const sr = SKIRT_RATE[S.skirtings] || [0, 0];
+    const partialWall = S.scope === 'partial' ? est.wallArea * calcPartialMask(S).giaFrac : est.wallArea;
+    const partialSk = S.scope === 'partial' ? est.skirtingLM * calcPartialMask(S).giaFrac : est.skirtingLM;
+    const flooringArea = Math.max(10, getM2(S.giaRaw, S.giaUnit) - (S.bathrooms || 0) * 5 - (S.cloakrooms || 0) * 2);
+    if (mid(fr) > 0) finishLines.push({
+      label: `Flooring — ${S.flooring}`,
+      note: `${Math.round(flooringArea)}m² × £${mid(fr)}/m² (bathrooms excluded — tiled in Bathrooms section)`,
+      value: Math.round(flooringArea * mid(fr))
+    });
+    if (mid(dr) > 0) finishLines.push({
+      label: `Decoration — ${S.decoration}`,
+      note: `${Math.round(partialWall)}m² wall area × £${mid(dr)}/m²`,
+      value: Math.round(partialWall * mid(dr))
+    });
+    if (mid(sr) > 0) finishLines.push({
+      label: `Skirtings & architraves — ${S.skirtings}`,
+      note: `${Math.round(partialSk)}lm perimeter × £${mid(sr)}/lm`,
+      value: Math.round(partialSk * mid(sr))
+    });
+  }
+
+  // ── EXTERNAL FABRIC ──
+  const fabTotal = est.fabric;
+  const fabMid = mid(fabTotal);
+  let fabLines = [];
+  if ((_S$windowTypes = S.windowTypes) !== null && _S$windowTypes !== void 0 && _S$windowTypes.includes('replace') && S.replaceCount > 0) fabLines.push({
+    label: `Window replacement × ${S.replaceCount}`,
+    note: 'Like-for-like supply and installation',
+    value: S.replaceCount * mid(WINDOW_UNIT.replace)
+  });
+  if ((_S$windowTypes2 = S.windowTypes) !== null && _S$windowTypes2 !== void 0 && _S$windowTypes2.includes('new') && S.newOpenings > 0) fabLines.push({
+    label: `New window openings × ${S.newOpenings}`,
+    note: 'Structural opening, lintel, reveals, window unit',
+    value: S.newOpenings * mid(WINDOW_UNIT.new)
+  });
+  if ((_S$windowTypes3 = S.windowTypes) !== null && _S$windowTypes3 !== void 0 && _S$windowTypes3.includes('sash') && S.sashCount > 0) fabLines.push({
+    label: `Sash restoration × ${S.sashCount}`,
+    note: 'Full overhaul, reweighting, draught seals',
+    value: S.sashCount * mid(WINDOW_UNIT.sash)
+  });
+  if (S.doors && S.doors !== 'none') fabLines.push({
+    label: `External door(s) — ${S.doors}`,
+    note: 'Supply, installation, frame, hardware',
+    value: mid(DOOR_COST[S.doors])
+  });
+  if (S.rooflights && S.rooflights !== 'none') fabLines.push({
+    label: `Rooflights — ${S.rooflights}`,
+    note: 'Structural opening, curb, glazed unit',
+    value: mid(ROOF_COST[S.rooflights])
+  });
+
+  // ── EXTERNAL WORKS ──
+  let extLines = [];
+  if (S.external.includes('garden') && S.gardenSize) {
+    const gr = GARDEN_RATE[S.gardenSize];
+    const gm2 = GARDEN_M2[S.gardenSize];
+    extLines.push({
+      label: `Garden / landscaping — ${S.gardenSize} (est. ${gm2}m²)`,
+      note: 'Hard/soft landscaping, drainage, lighting allowance',
+      value: Math.round(gm2 * mid(gr))
+    });
+  }
+  if (S.external.includes('facade')) extLines.push({
+    label: 'Façade repairs',
+    note: 'Repointing, render, stonework — not painting',
+    value: mid(EXT_COSTS.facade)
+  });
+
+  // ── STATUTORY FEES ──
+  const feeTotal = est.fees;
+  const feeMid = mid(feeTotal);
+  let feeLines = [];
+  // Building control — London residential: scales with GIA
+  const bcFee = gia < 75 ? 700 : gia < 150 ? 950 : gia < 250 ? 1300 : gia < 400 ? 1800 : 2500;
+  feeLines.push({
+    label: 'Building control',
+    note: `Full plans application + inspections · ${Math.round(gia)}m² property`,
+    value: bcFee
+  });
+  if (S.listed && S.listed !== 'none') {
+    const lbcCost = getLBCFee(S);
+    const lbcLabel = S.listed === 'grade1' ? 'Grade I' : S.listed === 'grade2star' ? 'Grade II*' : 'Grade II';
+    feeLines.push({
+      label: `Listed Building Consent — ${lbcLabel}`,
+      note: 'Application, heritage consultant report, statutory fee',
+      value: lbcCost
+    });
+  }
+  if (S.tenure === 'leasehold') feeLines.push({
+    label: 'Licence to Alter',
+    note: 'Freeholder approval — solicitor and surveyor fees',
+    value: mid([1500, 3000])
+  });
+  const hasStructFee = hasStruct && ['semi', 'terrace', 'flat'].includes(S.arrangement || (['period-flat', 'newbuild-flat'].includes(S.propertyType) ? 'flat' : null));
+  if (hasStructFee) feeLines.push({
+    label: 'Party Wall Act',
+    note: 'Surveyor appointment, award, notifications',
+    value: mid([900, 2500])
+  });
+  // CDM/Principal Designer included in Prelims (PM fee) for projects under £500k
+  // Only add separately for larger projects
+  if (est && est.total && est.total[0] > 500000) {
+    feeLines.push({
+      label: 'CDM / Principal Designer',
+      note: 'Separate appointment required — project exceeds £500k threshold',
+      value: Math.round(feeMid * 0.08)
+    });
+  }
+  const remainFees = feeMid - feeLines.reduce((s, l) => s + l.value, 0);
+  // Structural engineer only when structural works are in scope
+  // Listed building always needs heritage consultant (already in LBC line)
+  if (hasStruct && remainFees > 200) feeLines.push({
+    label: 'Structural engineer',
+    note: 'Structural calculations, beam sizing, building control sign-off',
+    value: remainFees
+  });
+
+  // ── CONTINGENCY ──
+  const contMid = mid(est.cont);
+  const contRate = est.cr;
+  const contReason = S.listed && S.listed !== 'none' ? 'Listed building — highest discovery risk' : hasStruct ? 'Structural works — elevated discovery risk' : S.scope === 'full' ? 'Full refurbishment scope' : S.scope === 'partial' ? 'Partial scope' : 'Kit-bath / targeted scope';
+
+  // ── VARIANCE DRIVERS ──
+  const drivers = [];
+  if (S.listed && S.listed !== 'none') drivers.push(`Listed building (${S.listed}): specialist trade availability, consent conditions, and material restrictions are the primary unknowns.`);
+  if (S.lastRefurb === 'never' || S.lastRefurb === '20plus') drivers.push(`Property not refurbished in 20+ years: concealed services condition (knob-and-tube wiring, lead pipes, lath & plaster) is the main source of cost variance.`);
+  if (S.buildingAge === 'pre1900') drivers.push(`Pre-1900 construction: non-standard dimensions, solid walls, and substrate variability affect plastering and finishes rates.`);
+  if (hasStruct) drivers.push(`Structural alterations: ground conditions, beam sizing, and building control hold points carry programme and cost uncertainty.`);
+  if (S.zone === 'z1') drivers.push(`Zone 1 location: contractor availability, parking restrictions, and material delivery logistics add 8–12% to preliminaries vs outer London.`);
+  if (drivers.length === 0) drivers.push(`No elevated risk factors identified. The primary variance in this estimate is specification — final costs will depend on product selections made at PCSA stage.`);
+
+  // ── PROGRAMME BREAKDOWN ──
+  let progLines = [];
+  if (est.timeline) {
+    const tl = est.timeline;
+    const fw = tl.fmtW;
+    progLines.push({
+      phase: 'PRE-CONSTRUCTION',
+      weeks: fw(tl.preConstruction.total.weeks),
+      note: 'Parallel paths — longest governs',
+      isHeader: true
+    });
+    Object.values(tl.preConstruction.gates).forEach(g => {
+      progLines.push({
+        phase: g.label,
+        weeks: fw(g.weeks),
+        note: g.note || '',
+        isHeader: false
+      });
+    });
+    progLines.push({
+      phase: 'CONSTRUCTION',
+      weeks: fw(tl.construction.total.weeks),
+      note: 'Sequential phases, critical path',
+      isHeader: true
+    });
+    tl.construction.phases.forEach(p => {
+      const isCont = p.label.includes('Contingency');
+      progLines.push({
+        phase: p.label,
+        weeks: fw(p.weeks),
+        note: isCont ? 'Named buffer — not hidden inside phase durations' : p.note || '',
+        isHeader: false,
+        isAccent: isCont
+      });
+    });
+    progLines.push({
+      phase: 'Defects Liability Period',
+      weeks: fw(tl.dlp.weeks),
+      note: 'Post practical completion — retention held',
+      isHeader: false
+    });
+    progLines.push({
+      phase: 'TOTAL FROM TODAY',
+      weeks: fw(tl.grandTotal.weeks),
+      note: 'Inc. pre-construction and DLP',
+      isHeader: true
+    });
+  }
+
+  // ── BESPOKE FURNITURE LINES ──
+  const furnTotal = est.furn;
+  const furnMid = mid(furnTotal);
+  const furnLM = S.furnitureLM || 0;
+  const furnHeightLabel = S.furnitureHeight === 'full' ? 'full height 2.4m' : S.furnitureHeight === 'tall' ? 'tall/double 2.7m+' : 'standard 2.2m';
+  const hMod = FURN_HEIGHT_MOD[S.furnitureHeight] || 1;
+  const furnRate = FURN_COST_PER_LM[S.furnitureTier] || [0, 0];
+  let furnLines = [];
+  if (furnMid > 0 && furnLM > 0 && S.furnitureTier) {
+    const carcassShare = Math.round(furnMid * 0.55);
+    const frontsShare = Math.round(furnMid * 0.25);
+    const fitShare = furnMid - carcassShare - frontsShare;
+    furnLines = [{
+      label: `Carcass, internals & shelving — ${S.furnitureTier}`,
+      note: `${furnLM}lm × ${furnHeightLabel} · £${mid(furnRate)}/lm`,
+      value: carcassShare
+    }, {
+      label: 'Fronts, hardware & soft-close',
+      note: S.furnitureTier === 'designer' ? 'Bespoke painted or veneered, handleless' : S.furnitureTier === 'premium' ? 'Solid or lacquered fronts, push-to-open' : 'Slab or shaker fronts, soft-close hinges',
+      value: frontsShare
+    }, {
+      label: 'Site fitting, scribing & making good',
+      note: 'Delivery coordination, installation, scribing to walls, filler panels',
+      value: fitShare
+    }];
+  }
+  return {
+    sections: [{
+      id: 'prelims',
+      title: 'Preliminaries',
+      total: prelimTotal,
+      lines: prelimLines
+    }, {
+      id: 'demo',
+      title: 'Strip-out & Demolition',
+      total: demoTotal,
+      lines: demoLines
+    }, {
+      id: 'sworks',
+      title: 'Structural Works',
+      total: sWorkTotal,
+      lines: sWorkLines
+    }, {
+      id: 'structure',
+      title: 'Structure',
+      total: structTotal,
+      lines: structLines
+    }, {
+      id: 'elec',
+      title: 'Electrical',
+      total: elecTotal,
+      lines: elecLines
+    }, {
+      id: 'plumb',
+      title: 'Plumbing',
+      total: plumbTotal,
+      lines: plumbLines
+    }, {
+      id: 'mech',
+      title: 'Mechanical',
+      total: mechTotal,
+      lines: mechLines
+    }, {
+      id: 'kitchen',
+      title: 'Kitchen',
+      total: kitTotal,
+      lines: kitLines
+    }, {
+      id: 'bath',
+      title: 'Bathrooms & Cloakrooms',
+      total: add(bathTotal, est.cloak),
+      lines: bathLines
+    }, {
+      id: 'furn',
+      title: 'Bespoke Furniture',
+      total: est.furn,
+      lines: furnLines
+    }, {
+      id: 'finishes',
+      title: 'Finishes',
+      total: finishTotal,
+      lines: finishLines
+    }, {
+      id: 'fabric',
+      title: 'External Fabric',
+      total: fabTotal,
+      lines: fabLines
+    }, {
+      id: 'ext',
+      title: 'External Works',
+      total: est.ext,
+      lines: extLines
+    }, {
+      id: 'fees',
+      title: 'Statutory Fees',
+      total: feeTotal,
+      lines: feeLines
+    }],
+    contingency: {
+      total: est.cont,
+      rate: contRate,
+      reason: contReason,
+      mid: contMid
+    },
+    grandTotal: est.total,
+    midpoint: est.mid,
+    varianceDrivers: drivers,
+    programme: progLines,
+    generatedAt: new Date().toLocaleString('en-GB'),
+    ref: `MG-${Date.now().toString(36).toUpperCase().slice(-6)}`
+  };
+}
+function calcTimeline(S) {
+  if (!S.scope || !S.zone || !S.giaRaw) return null;
+  const gia = getM2(S.giaRaw, S.giaUnit);
+  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
+  const effArr = ['period-flat', 'newbuild-flat'].includes(S.propertyType) ? 'flat' : S.arrangement;
+  const sharedBoundary = ['semi', 'terrace', 'flat'].includes(effArr);
+  const modR = ([lo, hi], m) => [lo * m, hi * m];
+  const addR = ([a, b], [c, d]) => [a + c, b + d];
+  const roundR = ([lo, hi]) => [Math.max(0.5, Math.round(lo * 2) / 2), Math.max(0.5, Math.round(hi * 2) / 2)];
+  const fmtW = ([lo, hi]) => lo === hi ? `${lo} wks` : `${lo}–${hi} wks`;
+  let gate1 = {
+    triggered: false
+  };
+  if (S.listed && S.listed !== 'none') {
+    gate1 = {
+      triggered: true,
+      label: 'Listed Building Consent',
+      weeks: S.listed === 'grade1' ? [13, 16] : S.listed === 'grade2star' ? [10, 13] : [8, 12]
+    };
+  }
+  let gate2 = {
+    triggered: false
+  };
+  if (hasStruct && sharedBoundary && (S.structural.includes('walls') || S.structural.includes('extension') || S.structural.includes('basement'))) {
+    gate2 = {
+      triggered: true,
+      label: 'Party Wall Act',
+      weeks: S.structural.includes('basement') ? [8, 14] : [4, 8]
+    };
+  }
+  let gate3 = {
+    triggered: false
+  };
+  if (S.tenure === 'leasehold') {
+    gate3 = {
+      triggered: true,
+      label: 'Licence to Alter',
+      weeks: [3, 6]
+    };
+  }
+  const pcsa = {
+    label: 'Design & Pre-Start',
+    weeks: [4, 6]
+  };
+  const allPreCon = [pcsa, gate1, gate2, gate3].filter(g => g.triggered !== false || g.label === 'Design & Pre-Start');
+  const preConLo = Math.max(...allPreCon.map(g => g.weeks[0]));
+  const preConHi = Math.max(...allPreCon.map(g => g.weeks[1]));
+  const listedMod = S.listed === 'grade1' ? 1.30 : S.listed === 'grade2star' ? 1.25 : S.listed === 'grade2' ? 1.20 : 1.00;
+  const refurbRisk = S.lastRefurb === 'never' || S.lastRefurb === '20plus' ? 1.15 : S.lastRefurb === '10to20' ? 1.08 : S.lastRefurb === '5to10' ? 1.04 : 1.00;
+  const handoverRisk = S.handover === 'furnished' ? 1.08 : S.handover === 'part-cleared' ? 1.04 : 1.00;
+  const condMod = Math.max(refurbRisk, handoverRisk);
+  const ceilMod = S.ceilingHeight === 'double-height' ? 1.20 : S.ceilingHeight === 'tall' ? 1.08 : 1.00;
+  const phMobilisation = {
+    label: 'H1 Mobilisation',
+    weeks: [1, 1],
+    note: 'Site surveys, contractor onboarding, materials procurement, protection of retained items'
+  };
+  // Strip-out — continuous scaling by GIA
+  let sLo, sHi;
+  if (S.demo === 'cosmetic') {
+    sLo = 0.5;
+    sHi = 0.5 + gia / 200;
+  } else if (S.demo === 'targeted') {
+    sLo = 0.5 + gia / 150;
+    sHi = 1 + gia / 100;
+  } else {
+    sLo = 0.5 + gia / 150;
+    sHi = 1 + gia / 100;
+  } // full strip — same formula, period/condition mods handle uplift
+  const phaseStripout = {
+    label: 'Strip-out & Demolition',
+    weeks: roundR(modR(modR([sLo, sHi], condMod), listedMod))
+  };
+  let phaseStructural = {
+    triggered: false
+  };
+  if (hasStruct) {
+    let stLo = 0,
+      stHi = 0;
+    const eM2t = getM2(S.extRaw, S.extUnit) || 0;
+    const lM2t = getM2(S.loftRaw, S.loftUnit) || 0;
+    const bM2t = getM2(S.basRaw, S.basUnit) || 0;
+
+    // Wall removal — fixed, no area needed
+    if (S.structural.includes('walls')) {
+      stLo += 1.5;
+      stHi += 3;
+    }
+
+    // Extension — continuous linear scaling, every m² moves the needle
+    if (S.structural.includes('extension') && eM2t > 0) {
+      const d = S.storeys === 'double';
+      // Single: 3wks base + 0.14/m² lo, 5wks base + 0.20/m² hi
+      // Double: 4wks base + 0.18/m² lo, 7wks base + 0.28/m² hi
+      stLo += d ? 4 + eM2t * 0.18 : 3 + eM2t * 0.14;
+      stHi += d ? 7 + eM2t * 0.28 : 5 + eM2t * 0.20;
+    }
+
+    // Loft — continuous linear scaling
+    if (S.structural.includes('loft') && lM2t > 0) {
+      // 4wks base + 0.16/m² lo, 6wks base + 0.22/m² hi
+      stLo += 4 + lM2t * 0.16;
+      stHi += 6 + lM2t * 0.22;
+    }
+
+    // Basement — continuous scaling, excavation vs fit-out
+    if (S.structural.includes('basement') && bM2t > 0) {
+      const e = S.basType === 'excavation';
+      // Excavation: 10wks base + 0.20/m² lo, 16wks base + 0.30/m² hi
+      // Fit-out: 3wks base + 0.08/m² lo, 6wks base + 0.14/m² hi
+      stLo += e ? 10 + bM2t * 0.20 : 3 + bM2t * 0.08;
+      stHi += e ? 16 + bM2t * 0.30 : 6 + bM2t * 0.14;
+    }
+
+    // Only trigger the phase if at least one item has non-zero weeks
+    if (stLo > 0) {
+      phaseStructural = {
+        triggered: true,
+        label: 'Structural Works',
+        weeks: roundR(modR(modR([stLo, stHi], condMod), listedMod))
+      };
+    }
+  }
+  const rooms = deriveRooms(S);
+  const totalRooms = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
+  let m1Lo = 2.5,
+    m1Hi = 4;
+  if (totalRooms > 8) {
+    m1Lo += 0.5;
+    m1Hi += 1;
+  }
+  if (totalRooms > 12) {
+    m1Lo += 0.5;
+    m1Hi += 1;
+  }
+  if (S.scope === 'kit-bath') {
+    m1Lo *= 0.5;
+    m1Hi *= 0.6;
+  }
+  if (S.smart === 'full') {
+    m1Lo += 1;
+    m1Hi += 2;
+  }
+  if (S.ufhZone && S.ufhZone !== 'none') {
+    const isWhole = S.ufhZone === 'whole-house' || S.ufhZone === 'ground-floor' && (S.floors || 1) <= 1;
+    m1Lo += isWhole ? 1.5 : 0.5;
+    m1Hi += isWhole ? 2.5 : 1;
+  }
+  if (S.floors >= 3) {
+    m1Lo += 0.5;
+    m1Hi += 1;
+  }
+  const phase1stFix = {
+    label: '1st Fix MEP',
+    weeks: roundR(modR([m1Lo, m1Hi], listedMod))
+  };
+  let pLo = 1.5,
+    pHi = 3;
+  if (gia > 100) {
+    pLo += 0.5;
+    pHi += 1;
+  }
+  if (gia > 180) {
+    pLo += 0.5;
+    pHi += 1;
+  }
+  const phaseCloseup = {
+    label: 'Close-up & Plaster',
+    weeks: roundR(modR(modR([pLo, pHi], ceilMod), listedMod))
+  };
+  const phaseDryTime = {
+    label: 'Plaster Dry Time',
+    weeks: [2, 3]
+  };
+
+  // 2nd fix — dynamic based on spec complexity
+  let m2Lo = 1.5,
+    m2Hi = 2.5;
+  if (totalRooms > 8) {
+    m2Lo += 0.5;
+    m2Hi += 0.5;
+  }
+  if (S.smart === 'full') {
+    m2Lo += 1;
+    m2Hi += 2;
+  }
+  if (S.boiler !== 'keep') {
+    m2Lo += 0.5;
+    m2Hi += 0.5;
+  }
+  const {
+    sockets,
+    switches,
+    radCount
+  } = calcComponents(rooms, S.ceilingHeight);
+  m2Lo += sockets / 50;
+  m2Hi += sockets / 35;
+  if (radCount > 0) {
+    m2Lo += radCount / 10;
+    m2Hi += radCount / 7;
+  }
+  if (S.ventilation === 'mvhr') {
+    m2Lo += 0.5;
+    m2Hi += 1;
+  }
+  const phase2ndFix = {
+    label: '2nd Fix & Commissioning',
+    weeks: roundR(modR([m2Lo, m2Hi], listedMod))
+  };
+  let wLo = 0,
+    wHi = 0;
+  const bTime = S.bathTier === 'designer' ? [1.5, 2.5] : S.bathTier === 'premium' ? [1, 1.5] : [0.5, 1];
+  wLo += rooms.bathrooms * bTime[0];
+  wHi += rooms.bathrooms * bTime[1];
+  wLo += rooms.cloakrooms * 0.5;
+  wHi += rooms.cloakrooms * 0.5;
+  if (S.freestandingBath && S.freestandingBath !== 'none') {
+    wLo += 0.5;
+    wHi += 1;
+  }
+  if (S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout') {
+    const kT = S.kitTier === 'designer' ? [2, 3.5] : S.kitTier === 'premium' ? [1.5, 2.5] : [1, 1.5];
+    wLo += kT[0];
+    wHi += kT[1];
+  }
+  if (wLo > 0) {
+    wLo = Math.max(1, wLo);
+    wHi = Math.max(1.5, wHi);
+  }
+  const phaseWetAreas = {
+    label: 'Wet Areas',
+    weeks: wLo > 0 ? roundR(modR([wLo, wHi], listedMod)) : [0, 0]
+  };
+  const decoMod = S.decoration === 'bespoke' ? 1.30 : S.decoration === 'repaint-feature' ? 1.15 : 1.00;
+  const floorMod = S.flooring === 'solid-wood' ? 1.20 : S.flooring === 'eng-wood' ? 1.10 : 1.00;
+  let fLo = 1.5,
+    fHi = 3;
+  if (gia > 100) {
+    fLo += 0.5;
+    fHi += 1;
+  }
+  if (gia > 180) {
+    fLo += 0.5;
+    fHi += 1;
+  }
+  const decoPhFin = modR(modR(modR(modR([fLo, fHi], decoMod), floorMod), ceilMod), listedMod);
+  const phaseFurnitureFit = S.bespokeFurniture === 'yes' && S.furnitureLM > 0 ? {
+    label: 'Bespoke Furniture — Delivery & Fit',
+    weeks: roundR([Math.max(0.5, S.furnitureLM * 0.05), Math.max(1, S.furnitureLM * 0.1)])
+  } : null;
+  const phaseFinishes = {
+    label: 'Decoration & Painting',
+    weeks: roundR(decoPhFin)
+  };
+  const phaseSnagging = {
+    label: 'Snagging & Sign-off',
+    weeks: S.scope === 'full' ? [1, 2] : [0.5, 1]
+  };
+  const contRate = S.listed && S.listed !== 'none' ? 0.15 : hasStruct ? 0.12 : S.scope === 'full' ? 0.10 : S.scope === 'partial' ? 0.08 : 0.06;
+  const phases = [phMobilisation, phaseStripout, ...(phaseStructural.triggered ? [phaseStructural] : []), phase1stFix, phaseCloseup, phaseDryTime, phase2ndFix, ...(phaseWetAreas.weeks[1] > 0 ? [phaseWetAreas] : []), ...(phaseFurnitureFit ? [phaseFurnitureFit] : []), phaseFinishes, phaseSnagging];
+  const conRawLo = phases.reduce((s, p) => s + p.weeks[0], 0);
+  const conRawHi = phases.reduce((s, p) => s + p.weeks[1], 0);
+  const contWeeks = roundR([conRawLo * contRate, conRawHi * contRate]);
+  const programmeContingency = {
+    label: `Programme Contingency (${Math.round(contRate * 100)}%)`,
+    weeks: contWeeks
+  };
+  const constructionTotal = {
+    weeks: roundR([conRawLo + contWeeks[0], conRawHi + contWeeks[1]])
+  };
+  const dlp = {
+    label: 'Defects Liability Period',
+    weeks: [4, 4]
+  };
+  const totalLo = preConLo + constructionTotal.weeks[0] + 4;
+  const totalHi = preConHi + constructionTotal.weeks[1] + 4;
+  const procurementFlags = [];
+  if (S.kitTier === 'designer') procurementFlags.push('Designer kitchen: 8–14 week lead time. Order at PCSA.');else if (S.kitTier === 'premium') procurementFlags.push('Premium kitchen: 6–10 week lead time from order.');
+  if (S.bathTier === 'designer') procurementFlags.push('Designer sanitaryware: 4–8 week lead time. Order at PCSA.');
+  if (S.bespokeFurniture === 'yes') procurementFlags.push('Bespoke furniture: 6–10 week lead time from order.');
+  if (S.smart === 'full') procurementFlags.push('Full smart home system: specification must begin at PCSA.');
+  return {
+    preConstruction: {
+      total: {
+        weeks: [preConLo, preConHi]
+      },
+      gates: {
+        pcsa,
+        ...(gate1.triggered && {
+          listedConsent: gate1
+        }),
+        ...(gate2.triggered && {
+          partyWall: gate2
+        }),
+        ...(gate3.triggered && {
+          licenceToAlter: gate3
+        })
+      }
+    },
+    construction: {
+      total: constructionTotal,
+      phases: [...phases, programmeContingency],
+      contingencyRate: contRate
+    },
+    dlp,
+    procurementFlags,
+    grandTotal: {
+      weeks: roundR([totalLo, totalHi])
+    },
+    fmtW
+  };
+}
+
+// ── DESIGN COMPONENTS ─────────────────────────────────────────
+
+const Section = ({
+  title,
+  num,
+  total,
+  visible,
+  children,
+  info,
+  answered,
+  outOf,
+  done
+}) => {
+  const [showInfo, setShowInfo] = React.useState(false);
+  if (!visible) return null;
+  const hasProgress = outOf !== undefined && answered !== undefined;
+  const pct = hasProgress ? answered / outOf : 0;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 28,
+      animation: 'fadeIn 350ms ease both'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "section-header",
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 10,
+      paddingBottom: 10,
+      paddingTop: 8,
+      borderBottom: '1px solid rgba(255,255,255,0.1)',
+      marginLeft: -24,
+      marginRight: -24,
+      paddingLeft: 24,
+      paddingRight: 24
+    }
+  }, hasProgress && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      fontWeight: 500,
+      letterSpacing: 1.5,
+      color: done ? 'var(--teal)' : 'rgba(255,255,255,0.25)',
+      textTransform: 'uppercase'
+    }
+  }, answered, "/", outOf), /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 32,
+      height: 2,
+      background: 'rgba(255,255,255,0.08)',
+      borderRadius: 1,
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: '100%',
+      background: done ? 'var(--teal)' : 'rgba(0,151,141,0.5)',
+      width: `${pct * 100}%`,
+      transition: 'width 300ms ease'
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1,
+      height: '1px',
+      background: 'rgba(255,255,255,0.05)'
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: 500,
+      fontSize: 14,
+      color: done ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)'
+    }
+  }, title), done && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 8,
+      letterSpacing: 1.5,
+      color: 'var(--teal)',
+      textTransform: 'uppercase',
+      flexShrink: 0
+    }
+  }, "\u2713"), info && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setShowInfo(v => !v),
+    style: {
+      width: 20,
+      height: 20,
+      borderRadius: '50%',
+      border: '1px solid rgba(255,255,255,0.15)',
+      background: showInfo ? 'rgba(0,151,141,0.2)' : 'rgba(255,255,255,0.04)',
+      color: showInfo ? 'var(--teal)' : 'rgba(255,255,255,0.4)',
+      fontFamily: 'Georgia,serif',
+      fontSize: 11,
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+      transition: 'all 150ms',
+      lineHeight: 1
+    }
+  }, "?")), info && showInfo && /*#__PURE__*/React.createElement("div", {
+    style: {
+      margin: '0 0 14px 0',
+      padding: '12px 14px',
+      background: 'rgba(0,151,141,0.06)',
+      border: '1px solid rgba(0,151,141,0.18)',
+      borderRadius: 4,
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.55)',
+      lineHeight: 1.7
+    }
+  }, info), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16
+    }
+  }, children));
+};
+const Sel = ({
+  label,
+  value,
+  onPick,
+  options,
+  cols = 2,
+  sub
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    marginBottom: 16
+  }
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 500,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: sub ? 4 : 8,
+    letterSpacing: 0.2,
+    textTransform: 'uppercase'
+  }
+}, label), sub && /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.25)',
+    marginBottom: 8,
+    lineHeight: 1.6
+  }
+}, sub), /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${cols},1fr)`,
+    gap: 5
+  }
+}, options.map(o => {
+  const on = value === o.v;
+  return /*#__PURE__*/React.createElement("button", {
+    key: o.v,
+    onClick: () => onPick(o.v),
+    title: o.tooltip || '',
+    style: {
+      padding: '10px 12px',
+      border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+      borderRadius: 4,
+      background: on ? 'rgba(0,151,141,0.14)' : 'rgba(255,255,255,0.03)',
+      color: on ? 'var(--teal)' : 'rgba(255,255,255,0.5)',
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: on ? 500 : 400,
+      fontSize: 12,
+      cursor: 'pointer',
+      textAlign: 'left',
+      lineHeight: 1.35,
+      transition: 'all 150ms ease',
+      boxShadow: on ? '0 0 10px rgba(0,151,141,0.1)' : 'none'
+    }
+  }, o.label, o.small && /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 10,
+      color: on ? 'rgba(0,151,141,0.7)' : 'rgba(255,255,255,0.22)',
+      marginTop: 2,
+      fontFamily: 'IBM Plex Mono,monospace'
+    }
+  }, o.small));
+})));
+const MultiSel = ({
+  label,
+  sub,
+  values,
+  onToggle,
+  options,
+  cols = 2
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    marginBottom: 16
+  }
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 500,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: sub ? 4 : 8,
+    textTransform: 'uppercase'
+  }
+}, label), sub && /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.25)',
+    marginBottom: 8,
+    lineHeight: 1.6
+  }
+}, sub), /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'grid',
+    gridTemplateColumns: `repeat(${cols},1fr)`,
+    gap: 5
+  }
+}, options.map(o => {
+  const on = o.v === 'none' ? values.includes('none') : values.includes(o.v);
+  return /*#__PURE__*/React.createElement("button", {
+    key: o.v,
+    onClick: () => onToggle(o.v),
+    style: {
+      padding: '10px 12px',
+      border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
+      borderRadius: 4,
+      background: on ? 'rgba(0,151,141,0.14)' : 'rgba(255,255,255,0.03)',
+      color: on ? 'var(--teal)' : 'rgba(255,255,255,0.5)',
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: on ? 500 : 400,
+      fontSize: 12,
+      cursor: 'pointer',
+      textAlign: 'left',
+      lineHeight: 1.35,
+      transition: 'all 150ms ease',
+      boxShadow: on ? '0 0 10px rgba(0,151,141,0.1)' : 'none'
+    }
+  }, o.label, o.small && /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 10,
+      color: on ? 'rgba(0,151,141,0.7)' : 'rgba(255,255,255,0.22)',
+      marginTop: 2,
+      fontFamily: 'IBM Plex Mono,monospace'
+    }
+  }, o.small));
+})));
+const NumInput = ({
+  label,
+  sub,
+  value,
+  onChange,
+  unit,
+  onUnitChange
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    marginBottom: 16
+  }
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 500,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: sub ? 4 : 8,
+    textTransform: 'uppercase'
+  }
+}, label), sub && /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.25)',
+    marginBottom: 8,
+    lineHeight: 1.6
+  }
+}, sub), /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'flex',
+    gap: 5
+  }
+}, /*#__PURE__*/React.createElement("input", {
+  type: "number",
+  value: value || '',
+  onChange: e => onChange(parseFloat(e.target.value) || 0),
+  placeholder: "0",
+  style: {
+    flex: 1,
+    height: 44,
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 4,
+    padding: '0 14px',
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 18,
+    fontWeight: 500,
+    color: 'var(--white)',
+    background: 'rgba(255,255,255,0.03)',
+    outline: 'none'
+  },
+  onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.4)',
+  onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'
+}), onUnitChange && /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'flex',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 4,
+    overflow: 'hidden'
+  }
+}, ['m2', 'sqft'].map(u => /*#__PURE__*/React.createElement("button", {
+  key: u,
+  onClick: () => onUnitChange(u),
+  style: {
+    padding: '0 12px',
+    border: 'none',
+    background: unit === u ? 'rgba(255,255,255,0.08)' : 'transparent',
+    color: unit === u ? 'var(--white)' : 'rgba(255,255,255,0.3)',
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 10,
+    cursor: 'pointer',
+    transition: 'all 150ms',
+    fontWeight: unit === u ? 500 : 400
+  }
+}, u === 'm2' ? 'm²' : 'sq ft')))));
+const Stepper = ({
+  label,
+  sub,
+  value,
+  onChange,
+  min = 0,
+  max = 12
+}) => /*#__PURE__*/React.createElement("div", {
+  style: {
+    marginBottom: 16
+  }
+}, /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 500,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: sub ? 4 : 8,
+    textTransform: 'uppercase'
+  }
+}, label), sub && /*#__PURE__*/React.createElement("div", {
+  style: {
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.25)',
+    marginBottom: 8,
+    lineHeight: 1.6
+  }
+}, sub), /*#__PURE__*/React.createElement("div", {
+  style: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 4,
+    overflow: 'hidden'
+  }
+}, /*#__PURE__*/React.createElement("button", {
+  onClick: () => onChange(Math.max(min, value - 1)),
+  style: {
+    width: 40,
+    height: 40,
+    border: 'none',
+    borderRight: '1px solid rgba(255,255,255,0.08)',
+    background: 'rgba(255,255,255,0.03)',
+    fontSize: 16,
+    cursor: 'pointer',
+    color: 'rgba(255,255,255,0.4)',
+    transition: 'background 150ms'
+  }
+}, "\u2212"), /*#__PURE__*/React.createElement("div", {
+  style: {
+    width: 52,
+    height: 40,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontFamily: 'IBM Plex Mono,monospace',
+    fontSize: 18,
+    fontWeight: 500,
+    color: 'var(--white)',
+    background: 'rgba(255,255,255,0.02)'
+  }
+}, value), /*#__PURE__*/React.createElement("button", {
+  onClick: () => onChange(Math.min(max, value + 1)),
+  style: {
+    width: 40,
+    height: 40,
+    border: 'none',
+    borderLeft: '1px solid rgba(255,255,255,0.08)',
+    background: 'rgba(255,255,255,0.03)',
+    fontSize: 16,
+    cursor: 'pointer',
+    color: 'rgba(255,255,255,0.4)',
+    transition: 'background 150ms'
+  }
+}, "+")));
+
+// ── CONTACT MODAL (MG-SYS-002 §6) ────────────────────────────
+const ContactModal = ({
+  onClose,
+  S,
+  rawEst
+}) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  // phase: 'capture' | 'sending' | 'confirmed' | 'error'
+  const [phase, setPhase] = useState('capture');
+  const [confirmedRef, setConfirmedRef] = useState('');
+
+  const nameValid = name.trim().length > 0;
+  const emailValid = email.trim().length > 0 && email.includes('@') && email.includes('.');
+  const formValid = nameValid && emailValid;
+
+  const handleSend = () => {
+    if (!formValid || phase !== 'capture') return;
+    const est = calcDetailedBreakdown(S, rawEst);
+    if (!est) return;
+    const ref = est.ref;
+    const payload = {
+      ref,
+      name: name.trim(),
+      email: email.trim(),
+      state: S,
+      est
+    };
+    setPhase('sending');
+    fetch('https://mg-submit-production.up.railway.app/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(r => r.json())
+      .then(({ ref: returnedRef, status }) => {
+        if (status === 'sent') {
+          setConfirmedRef(returnedRef || ref);
+          setPhase('confirmed');
+        } else {
+          setPhase('error');
+        }
+      })
+      .catch(() => setPhase('error'));
+  };
+
+  const inputStyle = {
+    width: '100%',
+    height: 48,
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: 4,
+    padding: '0 16px',
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 400,
+    fontSize: 15,
+    color: 'var(--white)',
+    background: 'rgba(255,255,255,0.04)',
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+  const labelStyle = {
+    fontFamily: 'Space Grotesk,sans-serif',
+    fontWeight: 500,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.4)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    display: 'block'
+  };
+
+  return /*#__PURE__*/React.createElement("div", {
+    className: "modal-overlay",
+    onClick: e => {
+      if (phase !== 'confirmed' && e.target === e.currentTarget) onClose();
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "modal-card"
+  },
+
+    /* ── header bar ── */
+    /*#__PURE__*/React.createElement("div", {
+      style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }
+    },
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6 } },
+        [0,1,2].map(i => /*#__PURE__*/React.createElement("span", {
+          key: i,
+          style: { width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }
+        }))
+      ),
+      /*#__PURE__*/React.createElement("span", {
+        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }
+      }, "MG-REPORT"),
+      phase !== 'confirmed'
+        ? /*#__PURE__*/React.createElement("button", {
+            onClick: onClose,
+            style: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }
+          }, "\xD7")
+        : /*#__PURE__*/React.createElement("span", { style: { width: 18 } })
+    ),
+
+    /* ── STATE A: CAPTURE ── */
+    phase === 'capture' && /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 16 }
+      }, "Full Breakdown Report"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 500, fontSize: 20, color: 'var(--white)', lineHeight: 1.3, marginBottom: 8 }
+      }, "Get the complete cost breakdown."),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 400, fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, marginBottom: 28 }
+      }, "Every line item. Programme timeline. Procurement flags. What the number means and what drives it \u2014 sent to your inbox."),
+
+      /* first name */
+      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 16 } },
+        /*#__PURE__*/React.createElement("label", { style: labelStyle }, "First name"),
+        /*#__PURE__*/React.createElement("input", {
+          type: "text",
+          placeholder: "Your first name",
+          value: name,
+          onChange: e => setName(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && document.getElementById('mg-modal-email') && document.getElementById('mg-modal-email').focus(),
+          style: inputStyle,
+          onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.5)',
+          onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.12)',
+          autoFocus: true
+        })
+      ),
+
+      /* email */
+      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 24 } },
+        /*#__PURE__*/React.createElement("label", { style: labelStyle }, "Email address"),
+        /*#__PURE__*/React.createElement("input", {
+          id: "mg-modal-email",
+          type: "email",
+          placeholder: "your@email.com",
+          value: email,
+          onChange: e => setEmail(e.target.value),
+          onKeyDown: e => e.key === 'Enter' && handleSend(),
+          style: inputStyle,
+          onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.5)',
+          onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.12)'
+        })
+      ),
+
+      /* SEND IT button */
+      /*#__PURE__*/React.createElement("button", {
+        onClick: handleSend,
+        style: {
+          width: '100%',
+          padding: '13px 0',
+          background: formValid ? 'var(--orange)' : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${formValid ? 'var(--orange)' : 'rgba(255,255,255,0.07)'}`,
+          borderRadius: 4,
+          fontFamily: 'Space Grotesk,sans-serif',
+          fontWeight: 600,
+          fontSize: 13,
+          color: formValid ? 'var(--white)' : 'rgba(255,255,255,0.18)',
+          cursor: formValid ? 'pointer' : 'default',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          transition: 'all 150ms'
+        },
+        onMouseEnter: e => { if (formValid) e.target.style.background = '#C94420'; },
+        onMouseLeave: e => { if (formValid) e.target.style.background = formValid ? 'var(--orange)' : 'rgba(255,255,255,0.04)'; }
+      }, "SEND IT"),
+
+      /* back / dismiss link */
+      /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', marginTop: 16 } },
+        /*#__PURE__*/React.createElement("span", {
+          onClick: onClose,
+          style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 12, color: 'rgba(255,255,255,0.25)', cursor: 'pointer', textDecoration: 'underline' }
+        }, "Back to calculator")
+      )
+    ),
+
+    /* ── SENDING ── */
+    phase === 'sending' && /*#__PURE__*/React.createElement("div", {
+      style: { textAlign: 'center', padding: '32px 0' }
+    },
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 20 }
+      }, "Sending"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 24, color: 'rgba(0,151,141,0.5)', marginBottom: 12, letterSpacing: 4 }
+      }, "\u22EF"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.35)' }
+      }, "Compiling your breakdown\u2026")
+    ),
+
+    /* ── STATE B: CONFIRMATION ── */
+    phase === 'confirmed' && /*#__PURE__*/React.createElement("div", {
+      style: { textAlign: 'center', padding: '24px 0' }
+    },
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 20 }
+      }, "Confirmed"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 28, color: 'var(--teal)', marginBottom: 20 }
+      }, "\u2713"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 500, fontSize: 18, color: 'var(--white)', marginBottom: 12, lineHeight: 1.3 }
+      }, "Your breakdown is on its way."),
+      /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: 'IBM Plex Mono,monospace',
+          fontSize: 13,
+          color: 'var(--teal)',
+          background: 'rgba(0,151,141,0.08)',
+          border: '1px solid rgba(0,151,141,0.2)',
+          borderRadius: 4,
+          padding: '10px 16px',
+          margin: '0 auto 16px',
+          letterSpacing: 2,
+          display: 'inline-block'
+        }
+      }, confirmedRef),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }
+      }, "We\u2019ll be in touch within 24 hours.")
+    ),
+
+    /* ── ERROR ── */
+    phase === 'error' && /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: '#EB5324', textTransform: 'uppercase', marginBottom: 16 }
+      }, "Submission failed"),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 400, fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 28 }
+      }, "Something went wrong sending your breakdown. Please email us directly at team@myrmexgroup.co.uk and we\u2019ll come back to you within 24 hours."),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: () => setPhase('capture'),
+        style: {
+          width: '100%',
+          padding: '13px 0',
+          background: 'var(--orange)',
+          border: '1px solid var(--orange)',
+          borderRadius: 4,
+          fontFamily: 'Space Grotesk,sans-serif',
+          fontWeight: 600,
+          fontSize: 13,
+          color: 'var(--white)',
+          cursor: 'pointer',
+          letterSpacing: 0.8,
+          textTransform: 'uppercase',
+          transition: 'all 150ms'
+        }
+      }, "Try again")
+    )
+
+  ));
+};
+
+// ── MAIN ─────────────────────────────────────────────────────
+function Calculator() {
+  const [S, setS] = useState({
+    propertyType: null,
+    tenure: null,
+    listed: null,
+    buildingAge: null,
+    arrangement: null,
+    zone: null,
+    giaRaw: 0,
+    giaUnit: 'm2',
+    bedrooms: 0,
+    floors: 0,
+    ceilingHeight: null,
+    access: null,
+    gfLayout: null,
+    roomsLargestFloor: 0,
+    condition: null,
+    handover: null,
+    lastRefurb: null,
+    scope: null,
+    partialAreas: [],
+    demo: null,
+    demoRooms: 0,
+    periodFeatures: null,
+    windowTypes: [],
+    replaceCount: 0,
+    newOpenings: 0,
+    sashCount: 0,
+    doors: null,
+    rooflights: null,
+    electrical: null,
+    elecFinish: null,
+    plumbing: null,
+    boiler: null,
+    ufhZone: null,
+    ventilation: null,
+    smart: null,
+    replaceRads: null,
+    radTier: null,
+    radCount: 0,
+    kitchenScope: null,
+    kitTier: null,
+    kitSize: null,
+    appliances: null,
+    bathrooms: 0,
+    bathTier: null,
+    freestandingBath: null,
+    cloakrooms: 0,
+    bespokeFurniture: null,
+    furnitureLM: 0,
+    furnitureHeight: null,
+    furnitureTier: null,
+    flooring: null,
+    decoration: null,
+    skirtings: null,
+    structural: [],
+    structuralAnswered: false,
+    loftRaw: 0,
+    loftUnit: 'm2',
+    extRaw: 0,
+    extUnit: 'm2',
+    storeys: null,
+    basRaw: 0,
+    basUnit: 'm2',
+    basType: null,
+    external: [],
+    gardenSize: null,
+    programme: null,
+    targetDate: '',
+    purpose: null
+  });
+  const [showModal, setShowModal] = useState(false);
+  const set = useCallback((k, v) => setS(p => ({
+    ...p,
+    [k]: v
+  })), []);
+  const pick = useCallback(k => v => set(k, v), [set]);
+  const toggleStruct = useCallback(v => {
+    setS(p => {
+      if (v === 'none') return {
+        ...p,
+        structural: ['none'],
+        structuralAnswered: true
+      };
+      let arr = p.structural.filter(x => x !== 'none');
+      if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
+      return {
+        ...p,
+        structural: arr,
+        structuralAnswered: true
+      };
+    });
+  }, []);
+  const toggleExt = useCallback(v => {
+    setS(p => {
+      if (v === 'none') return {
+        ...p,
+        external: ['none'],
+        gardenSize: null
+      };
+      let arr = p.external.filter(x => x !== 'none');
+      if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
+      return {
+        ...p,
+        external: arr
+      };
+    });
+  }, []);
+  const togglePartialAreas = useCallback(v => {
+    setS(p => {
+      let arr = p.partialAreas.filter(x => x !== v);
+      if (!p.partialAreas.includes(v)) arr.push(v);
+      return {
+        ...p,
+        partialAreas: arr
+      };
+    });
+  }, []);
+  const est = useMemo(() => recalc(S), [S]);
+  const TOTAL = 16;
+  const isFlat = ['period-flat', 'newbuild-flat'].includes(S.propertyType);
+  const isHouse = ['period-house', 'newbuild-house'].includes(S.propertyType);
+  // Auto-derive arrangement when property type implies it
+  const effectiveArrangement = isFlat ? 'flat' : S.arrangement;
+  const giaM2 = S.giaUnit === 'sqft' ? S.giaRaw * 0.0929 : S.giaRaw;
+  const giaValid = giaM2 >= 25;
+  const s1Done = S.propertyType && S.tenure && S.listed && S.buildingAge && effectiveArrangement && S.zone && giaValid && S.bedrooms > 0 && S.floors > 0 && S.ceilingHeight && S.access && S.gfLayout && S.roomsLargestFloor > 0;
+  const s2Done = !s1Done ? false : !!(S.handover && S.lastRefurb);
+  const s3Done = !s2Done ? false : !!(S.scope && S.demo && (S.scope !== 'partial' || S.partialAreas.length > 0));
+  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
+  const s4Done = !s3Done ? false : isPeriod ? S.periodFeatures !== null : true;
+  const s5Done = !(s3Done && s4Done) ? false : S.windowTypes !== null && S.doors !== null && S.rooflights !== null;
+  const s6Done = !s5Done ? false : S.electrical !== null && (S.electrical === 'none' || S.elecFinish !== null);
+  const s7Done = !s6Done ? false : S.plumbing !== null;
+  const s8Done = !s7Done ? false : S.boiler !== null && S.ufhZone !== null && S.ventilation !== null && S.smart !== null && S.replaceRads !== null && (S.replaceRads === 'no' || S.radTier !== null && S.radCount > 0);
+  const kitActive = S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout';
+  const s9Done = !s8Done ? false : S.kitchenScope !== null && (!kitActive || S.kitTier && S.kitSize && S.appliances);
+  const s10Done = !s9Done ? false : (S.bathrooms > 0 ? S.bathTier !== null : true) && S.freestandingBath !== null;
+  const s11Done = !s10Done ? false : S.bespokeFurniture !== null && (S.bespokeFurniture === 'no' || S.furnitureLM > 0 && S.furnitureHeight && S.furnitureTier);
+  const s12Done = !s11Done ? false : S.flooring !== null && S.decoration !== null && S.skirtings !== null;
+  const s13Done = !s12Done ? false : S.structuralAnswered === true;
+  const gardenSelected = S.external.includes('garden');
+  const s14Done = !s12Done ? false : S.external.length > 0 && (!gardenSelected || S.gardenSize !== null);
+  const s15Done = !s12Done ? false : S.programme !== null;
+  const s16Done = !s15Done ? false : S.purpose !== null;
+  const allDone = !!(s1Done && s2Done && s3Done && s4Done && s5Done && s6Done && s7Done && s8Done && s9Done && s10Done && s11Done && s12Done && s13Done && s14Done && s15Done && s16Done);
+  const ready = est && allDone && (S.programme !== 'target' || S.targetDate);
+
+  // Field-level progress — each answered field counts, gives immediate feedback
+  // Section-completion progress
+  let progress = 0;
+  [s1Done, s2Done, s3Done, s4Done, s5Done, s6Done, s7Done, s8Done, s9Done, s10Done, s11Done, s12Done, s13Done, s14Done, s15Done, s16Done].forEach(d => {
+    if (d) progress++;
+  });
+
+  // Per-section answered counts
+  const s1Ans = [S.propertyType, S.tenure, S.listed, S.buildingAge, effectiveArrangement, S.zone, giaValid ? true : null, S.bedrooms > 0 ? true : null, S.floors > 0 ? true : null, S.ceilingHeight, S.access, S.gfLayout, S.roomsLargestFloor > 0 ? true : null].filter(Boolean).length;
+  const s2Ans = [S.handover, S.lastRefurb].filter(Boolean).length;
+  const s3Of_dyn = S.scope === 'partial' ? 3 : 2;
+  const s3Ans = [S.scope ? true : null, S.scope === 'partial' ? S.partialAreas.length > 0 ? true : null : null, S.demo ? true : null].filter(Boolean).length;
+  const s4Ans = [isPeriod ? S.periodFeatures : true].filter(Boolean).length;
+  const s5Ans = [S.windowTypes && S.windowTypes.length > 0 ? true : null, S.doors, S.rooflights].filter(Boolean).length;
+  const s6Ans = [S.electrical, S.electrical !== 'none' ? S.elecFinish : null].filter(Boolean).length;
+  const s7Ans = [S.plumbing].filter(Boolean).length;
+  const s8Ans = [S.boiler, S.ufhZone !== null ? true : null, S.ventilation, S.smart, S.replaceRads !== null ? true : null].filter(Boolean).length;
+  const s9Of_dyn = kitActive ? 4 : 1;
+  const s9Ans = [S.kitchenScope ? true : null, kitActive ? S.kitTier ? true : null : null, kitActive ? S.kitSize ? true : null : null, kitActive ? S.appliances ? true : null : null].filter(Boolean).length;
+  const s10Of_dyn = S.bathrooms > 0 ? 4 : 3;
+  const s10Ans = [S.bathrooms > 0 ? true : null, S.bathrooms > 0 ? S.bathTier : null, S.freestandingBath ? true : null, true].filter(Boolean).length;
+  const s11Of_dyn = S.bespokeFurniture === 'yes' ? 4 : 1;
+  const s11Ans = [S.bespokeFurniture ? true : null, S.bespokeFurniture === 'yes' ? S.furnitureLM > 0 ? true : null : null, S.bespokeFurniture === 'yes' ? S.furnitureHeight ? true : null : null, S.bespokeFurniture === 'yes' ? S.furnitureTier ? true : null : null].filter(Boolean).length;
+  const s12Ans = [S.flooring, S.decoration, S.skirtings].filter(Boolean).length;
+  const s13Ans = [S.structuralAnswered ? true : null].filter(Boolean).length;
+  const s14Ans = [S.external.length > 0 ? true : null, gardenSelected ? (S.gardenSize ? true : null) : null].filter(Boolean).length;
+  const s15Ans = [S.programme].filter(Boolean).length;
+  const s16Ans = [S.purpose].filter(Boolean).length;
+  const s1Of = 13,
+    s2Of = 2,
+    s3Of = s3Of_dyn,
+    s4Of = isPeriod ? 1 : 0,
+    s5Of = 3,
+    s6Of = S.electrical === 'none' ? 1 : 2,
+    s7Of = 1,
+    s8Of = 5,
+    s9Of = s9Of_dyn,
+    s10Of = s10Of_dyn,
+    s11Of = s11Of_dyn,
+    s12Of = 3,
+    s13Of = 1,
+    s14Of = gardenSelected ? 2 : 1,
+    s15Of = 1,
+    s16Of = 1;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'var(--dark-base)',
+      minHeight: '100vh'
+    }
+  }, /*#__PURE__*/React.createElement("style", null, `@keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`), showModal && /*#__PURE__*/React.createElement(ContactModal, {
+    onClose: () => setShowModal(false),
+    S: S,
+    rawEst: est
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 1120,
+      margin: '0 auto',
+      padding: '48px 80px 80px',
+      display: 'grid',
+      gridTemplateColumns: '1fr 340px',
+      gap: 48,
+      alignItems: 'start'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "questions-card",
+    style: {
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 8,
+      padding: '24px'
+    }
+  }, /*#__PURE__*/React.createElement(Section, {
+    num: 1,
+    total: TOTAL,
+    answered: s1Ans,
+    outOf: s1Of,
+    done: !!s1Done,
+    title: "Project Definition",
+    info: "The foundations of your estimate. Every cost multiplier in the calculator flows from what you enter here \u2014 property type, age, location, and size are the four biggest drivers of your total. Take your time on this section.",
+    visible: true
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Property type",
+    value: S.propertyType,
+    onPick: v => {
+      set('propertyType', v);
+      if (['period-flat', 'newbuild-flat'].includes(v)) set('arrangement', 'flat');else if (v && !['period-flat', 'newbuild-flat'].includes(v) && S.arrangement === 'flat') set('arrangement', null);
+    },
+    cols: 2,
+    options: [{
+      v: 'period-house',
+      label: 'Period house'
+    }, {
+      v: 'period-flat',
+      label: 'Period flat / maisonette'
+    }, {
+      v: 'newbuild-house',
+      label: 'New-build house'
+    }, {
+      v: 'newbuild-flat',
+      label: 'New-build flat'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Tenure",
+    value: S.tenure,
+    onPick: pick('tenure'),
+    cols: 2,
+    options: [{
+      v: 'freehold',
+      label: 'Freehold'
+    }, {
+      v: 'leasehold',
+      label: 'Leasehold',
+      small: 'Triggers Licence to Alter'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Listed building status",
+    sub: "Affects specialist trades, materials approvals, and contingency rate",
+    value: S.listed,
+    onPick: pick('listed'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'Not listed'
+    }, {
+      v: 'grade2',
+      label: 'Grade II',
+      small: '+8% to base'
+    }, {
+      v: 'grade2star',
+      label: 'Grade II*',
+      small: '+10%'
+    }, {
+      v: 'grade1',
+      label: 'Grade I',
+      small: '+12%'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Building age",
+    value: S.buildingAge,
+    onPick: pick('buildingAge'),
+    cols: 2,
+    options: [{
+      v: 'pre1900',
+      label: 'Pre-1900',
+      small: '+12%'
+    }, {
+      v: '1900-1960',
+      label: '1900–1960',
+      small: '+7%'
+    }, {
+      v: '1960-2000',
+      label: '1960–2000',
+      small: '+3%'
+    }, {
+      v: 'post2000',
+      label: 'Post-2000',
+      small: 'Baseline'
+    }]
+  }), isFlat ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: 500,
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.5)',
+      marginBottom: 8,
+      textTransform: 'uppercase'
+    }
+  }, "Property arrangement"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '10px 12px',
+      border: '1px solid rgba(0,151,141,0.3)',
+      borderRadius: 4,
+      background: 'rgba(0,151,141,0.06)',
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontSize: 12,
+      color: 'rgba(0,151,141,0.8)'
+    }
+  }, "Flat / apartment ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(0,151,141,0.5)',
+      marginLeft: 8
+    }
+  }, "Auto-set from property type"))) : /*#__PURE__*/React.createElement(Sel, {
+    label: "Property arrangement",
+    value: S.arrangement,
+    onPick: pick('arrangement'),
+    cols: 2,
+    options: [{
+      v: 'detached',
+      label: 'Detached'
+    }, {
+      v: 'semi',
+      label: 'Semi-detached'
+    }, {
+      v: 'terrace',
+      label: 'Mid-terrace'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Location",
+    value: S.zone,
+    onPick: pick('zone'),
+    cols: 2,
+    options: [{
+      v: 'z1',
+      label: 'Zone 1',
+      small: 'Central London'
+    }, {
+      v: 'z2',
+      label: 'Zone 2',
+      small: 'Inner London'
+    }, {
+      v: 'z3',
+      label: 'Zone 3',
+      small: 'Outer London'
+    }, {
+      v: 'z4-6',
+      label: 'Zone 4–6',
+      small: 'Commuter belt'
+    }]
+  }), /*#__PURE__*/React.createElement(NumInput, {
+    label: "Gross internal area (GIA)",
+    sub: "Total floor area of the property being worked on",
+    value: S.giaRaw,
+    onChange: v => set('giaRaw', v),
+    unit: S.giaUnit,
+    onUnitChange: v => set('giaUnit', v)
+  }), S.giaRaw > 0 && !giaValid && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: '#EB5324',
+      marginTop: -10,
+      marginBottom: 12
+    }
+  }, "\u26A0 Minimum 25m\xB2 \u2014 below this the estimate is not reliable."), giaValid && giaM2 < 35 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(235,83,36,0.7)',
+      marginTop: -10,
+      marginBottom: 12
+    }
+  }, "Double-check this is the full property area, not a single room."), giaValid && giaM2 > 600 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(235,83,36,0.7)',
+      marginTop: -10,
+      marginBottom: 12
+    }
+  }, "For projects above 600m\xB2, contact us directly."), /*#__PURE__*/React.createElement(Stepper, {
+    label: "Bedrooms",
+    sub: "Includes any room used as a bedroom, study, or nursery",
+    value: S.bedrooms,
+    onChange: v => set('bedrooms', v),
+    min: 1,
+    max: 12
+  }), /*#__PURE__*/React.createElement(Stepper, {
+    label: "Floors being worked on",
+    sub: "Affects logistics, programme duration, and vertical services runs",
+    value: S.floors,
+    onChange: v => set('floors', v),
+    min: 1,
+    max: 5
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Ceiling height",
+    value: S.ceilingHeight,
+    onPick: pick('ceilingHeight'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'Under 2.6m'
+    }, {
+      v: 'tall',
+      label: 'Tall',
+      small: '2.6–3.2m · +8%'
+    }, {
+      v: 'double-height',
+      label: 'Double-height',
+      small: 'Over 3.2m · +20%'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Access difficulty",
+    value: S.access,
+    onPick: pick('access'),
+    cols: 3,
+    options: [{
+      v: 'easy',
+      label: 'Easy',
+      small: 'Ground floor'
+    }, {
+      v: 'moderate',
+      label: 'Moderate',
+      small: 'Upper + lift · +8%'
+    }, {
+      v: 'difficult',
+      label: 'Difficult',
+      small: 'Upper, no lift · +18%'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Ground floor layout",
+    sub: S.floors > 1 ? "Upper floors assumed cellular. This question is about the ground floor only." : isFlat && S.bedrooms <= 1 ? "Studio or single-room flat — select Fully open plan and set rooms to 1." : "Describes how the main living space is arranged.",
+    value: S.gfLayout,
+    onPick: pick('gfLayout'),
+    cols: 3,
+    options: [{
+      v: 'cellular',
+      label: 'Traditional cellular',
+      small: 'Separate kitchen, dining, living'
+    }, {
+      v: 'semi-open',
+      label: 'Semi-open plan',
+      small: 'Kitchen-diner or knocked through'
+    }, {
+      v: 'open-plan',
+      label: 'Fully open plan',
+      small: 'Studio or single open space'
+    }]
+  }), /*#__PURE__*/React.createElement(Stepper, {
+    label: "Rooms on the largest floor",
+    sub: "Tightens the layout inference. No measuring required.",
+    value: S.roomsLargestFloor,
+    onChange: v => set('roomsLargestFloor', v),
+    min: 1,
+    max: 10
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 2,
+    total: TOTAL,
+    answered: s2Ans,
+    outOf: s2Of,
+    done: !!s2Done,
+    title: "Property State",
+    info: "Two questions about the property's current state. Handover affects mobilisation \u2014 a furnished flat costs more to start because of removals, skip hire, and labour. Last refurbished affects discovery risk \u2014 the older the fabric, the more we find when we open walls. Both feed directly into the estimate.",
+    visible: !!s1Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "How will the property be handed over?",
+    value: S.handover,
+    onPick: pick('handover'),
+    cols: 2,
+    options: [{
+      v: 'empty',
+      label: 'Empty & cleared',
+      small: 'Services isolated, ready to start — baseline'
+    }, {
+      v: 'furnished',
+      label: 'Furnished / contents still in',
+      small: 'Removals, skip hire, extra labour — +5%'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "When was it last refurbished?",
+    sub: "Affects discovery risk \u2014 what we find when we open walls and floors.",
+    value: S.lastRefurb,
+    onPick: pick('lastRefurb'),
+    cols: 3,
+    options: [{
+      v: 'never',
+      label: 'Never / original',
+      small: 'All original fabric — +12%'
+    }, {
+      v: '20plus',
+      label: '20+ years ago',
+      small: 'Likely outdated systems — +10%'
+    }, {
+      v: '10to20',
+      label: '10–20 years ago',
+      small: 'Mixed condition — +6%'
+    }, {
+      v: '5to10',
+      label: '5–10 years ago',
+      small: 'Reasonable condition — +2%'
+    }, {
+      v: 'recent',
+      label: 'Within 5 years',
+      small: 'Baseline'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 3,
+    total: TOTAL,
+    answered: s3Ans,
+    outOf: s3Of,
+    done: !!s3Done,
+    title: "Scope & Strip-Out",
+    info: "Full refurbishment: every system is touched \u2014 structure, MEP, finishes, all rooms. Selected rooms / one floor: a defined portion only \u2014 e.g. full rewire and new kitchen, or one floor completely done, skipping bathrooms. Kitchen + bathrooms only: wet rooms and their services, nothing structural. Structural alteration only: no finishes \u2014 structural changes plus making good only.",
+    visible: !!s2Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Overall scope",
+    value: S.scope,
+    onPick: pick('scope'),
+    cols: 2,
+    options: [{
+      v: 'full',
+      label: 'Full refurbishment'
+    }, {
+      v: 'partial',
+      label: 'Selected rooms / one floor',
+      small: 'Not a full refurb — e.g. one floor, or all except bathrooms'
+    }, {
+      v: 'kit-bath',
+      label: 'Kitchen + bathrooms only'
+    }, {
+      v: 'structural-only',
+      label: 'Structural alteration only'
+    }]
+  }), S.scope === 'partial' && /*#__PURE__*/React.createElement(MultiSel, {
+    label: "Which areas are included?",
+    sub: "Select everything in scope. This tightens the estimate and helps us understand the project.",
+    values: S.partialAreas,
+    onToggle: togglePartialAreas,
+    cols: 2,
+    options: [{
+      v: 'living',
+      label: 'Living areas',
+      small: 'Reception, dining, hallways'
+    }, {
+      v: 'bedrooms',
+      label: 'All bedrooms',
+      small: 'Every bedroom'
+    }, {
+      v: 'master',
+      label: 'Master bedroom only',
+      small: 'Single room'
+    }, {
+      v: 'one-floor',
+      label: 'One complete floor',
+      small: 'All rooms on a single floor'
+    }, {
+      v: 'kitchen',
+      label: 'Kitchen',
+      small: 'Kitchen only — not bathrooms'
+    }, {
+      v: 'bathrooms',
+      label: 'Bathrooms',
+      small: 'Bathrooms only — not kitchen'
+    }, {
+      v: 'excl-bathrooms',
+      label: 'Everything except bathrooms',
+      small: 'Full scope minus wet rooms'
+    }, {
+      v: 'services-only',
+      label: 'Services only',
+      small: 'MEP throughout — no finishes'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Strip-out scope",
+    sub: "Costs are dynamic \u2014 scaled by property size, type, and condition.",
+    value: S.demo,
+    onPick: pick('demo'),
+    cols: 3,
+    options: [{
+      v: 'full',
+      label: 'Full strip to structure',
+      small: 'Everything back to bare walls, floors, ceilings'
+    }, {
+      v: 'targeted',
+      label: 'Targeted strip',
+      small: 'Specific rooms or areas only — kitchen, bathrooms, one floor'
+    }, {
+      v: 'cosmetic',
+      label: 'Cosmetic only',
+      small: 'Surface finishes only — no services or structure exposed'
+    }]
+  }), S.demo === 'targeted' && /*#__PURE__*/React.createElement(Stepper, {
+    label: "Additional rooms being stripped (beyond kitchen + bathrooms)",
+    sub: "Kitchen and bathrooms are already counted from your other selections.",
+    value: S.demoRooms,
+    onChange: v => set('demoRooms', v),
+    min: 0,
+    max: 10
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 4,
+    total: TOTAL,
+    answered: s4Ans,
+    outOf: s4Of,
+    done: !!s4Done,
+    title: "Structure",
+    info: "For period properties, original features \u2014 cornicing, ceiling roses, panelled doors, dado rails \u2014 require specialist trades to restore and are priced separately from the main build rate. For modern properties, structure costs are derived automatically from your GIA and property type.",
+    visible: !!s3Done
+  }, isPeriod ? /*#__PURE__*/React.createElement(Sel, {
+    label: "Retain and restore original period features?",
+    sub: "Cornicing, ceiling roses, dado rails, picture rails, panelled doors",
+    value: S.periodFeatures,
+    onPick: pick('periodFeatures'),
+    cols: 2,
+    options: [{
+      v: 'yes',
+      label: 'Yes — retain & restore',
+      small: '+£18–£30/m² + £300–£600/room'
+    }, {
+      v: 'no',
+      label: 'No — modern finish'
+    }]
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.25)',
+      padding: '12px 14px',
+      background: 'rgba(255,255,255,0.02)',
+      borderRadius: 4,
+      border: '1px solid rgba(255,255,255,0.06)',
+      lineHeight: 1.7
+    }
+  }, "Structure costs calculated automatically from your property inputs.")), /*#__PURE__*/React.createElement(Section, {
+    num: 5,
+    total: TOTAL,
+    answered: s5Ans,
+    outOf: s5Of,
+    done: !!s5Done,
+    title: "External Fabric",
+    info: "The building envelope: windows, doors, and rooflights. These are often overlooked in early budgets but carry significant cost \u2014 especially sash restoration or new structural openings. If you're not changing them, select No change.",
+    visible: !!s3Done && s4Done
+  }, /*#__PURE__*/React.createElement(MultiSel, {
+    label: "Windows \u2014 select all that apply",
+    sub: "You can combine types \u2014 e.g. replacing existing windows and cutting new openings.",
+    values: S.windowTypes,
+    onToggle: v => {
+      setS(p => {
+        if (v === 'none') return {
+          ...p,
+          windowTypes: ['none'],
+          replaceCount: 0,
+          newOpenings: 0,
+          sashCount: 0
+        };
+        let arr = p.windowTypes.filter(x => x !== 'none');
+        if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
+        return {
+          ...p,
+          windowTypes: arr
+        };
+      });
+    },
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'No window works'
+    }, {
+      v: 'replace',
+      label: 'Replace existing',
+      small: 'Like-for-like · £650–£1,200 each'
+    }, {
+      v: 'new',
+      label: 'New openings',
+      small: 'New structural opening + window · £1,500–£2,800 each'
+    }, {
+      v: 'sash',
+      label: 'Sash restoration',
+      small: 'Overhaul existing sash windows · £850–£1,600 each'
+    }]
+  }), S.windowTypes.includes('replace') && /*#__PURE__*/React.createElement(Stepper, {
+    label: "How many windows being replaced?",
+    value: S.replaceCount,
+    onChange: v => set('replaceCount', v),
+    min: 1,
+    max: 30
+  }), S.windowTypes.includes('new') && /*#__PURE__*/React.createElement(Stepper, {
+    label: "How many new openings?",
+    sub: "Each new opening requires structural work \u2014 lintel, reveals, making good.",
+    value: S.newOpenings,
+    onChange: v => set('newOpenings', v),
+    min: 1,
+    max: 10
+  }), S.windowTypes.includes('sash') && /*#__PURE__*/React.createElement(Stepper, {
+    label: "How many sash windows?",
+    value: S.sashCount,
+    onChange: v => set('sashCount', v),
+    min: 1,
+    max: 20
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "External doors",
+    value: S.doors,
+    onPick: pick('doors'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'No change'
+    }, {
+      v: 'front',
+      label: 'Front door'
+    }, {
+      v: 'back',
+      label: 'Back door'
+    }, {
+      v: 'both',
+      label: 'Both'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Rooflights",
+    value: S.rooflights,
+    onPick: pick('rooflights'),
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'Not applicable'
+    }, {
+      v: '1',
+      label: '1 rooflight',
+      small: '£1,200–£2,500'
+    }, {
+      v: '2plus',
+      label: '2 or more'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 6,
+    total: TOTAL,
+    answered: s6Ans,
+    outOf: s6Of,
+    done: !!s6Done,
+    title: "Electrical",
+    info: "Partial rewire covers adding circuits, moving consumer unit, upgrading specific areas. Full rewire means every circuit is replaced and a new consumer unit installed \u2014 required in most pre-1960 properties. Finishes (sockets, switches, faceplates) are a separate choice because they vary enormously in cost.",
+    visible: !!s5Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Electrical scope",
+    value: S.electrical,
+    onPick: v => {
+      set('electrical', v);
+      if (v === 'none') set('elecFinish', 'na');
+      else if (S.elecFinish === 'na') set('elecFinish', null);
+    },
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'No change'
+    }, {
+      v: 'partial',
+      label: 'Partial rewire',
+      small: '£22–£34/m²'
+    }, {
+      v: 'full-cu',
+      label: 'Full rewire + CU',
+      small: '£42–£62/m²'
+    }]
+  }), S.electrical && S.electrical !== 'none' && /*#__PURE__*/React.createElement(Sel, {
+    label: "Electrical finishes",
+    sub: `Room count: ${calcComponents(deriveRooms(S), S.ceilingHeight).sockets} sockets · ${calcComponents(deriveRooms(S), S.ceilingHeight).switches} switches`,
+    value: S.elecFinish,
+    onPick: pick('elecFinish'),
+    cols: 2,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'MK Logic, Schneider, BG',
+      tooltip: 'White plastic sockets & switches'
+    }, {
+      v: 'premium',
+      label: 'Premium',
+      small: 'Varilight, Hamilton, Forbes & Lomax',
+      tooltip: 'Brushed brass, chrome, satin nickel'
+    }, {
+      v: 'designer',
+      label: 'Designer',
+      small: 'Buster + Punch, Lutron',
+      tooltip: 'Custom metalwork, dimmers, scene control'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 7,
+    total: TOTAL,
+    answered: s7Ans,
+    outOf: s7Of,
+    done: !!s7Done,
+    title: "Plumbing",
+    info: "This covers pipework infrastructure only \u2014 supply pipes, waste runs, heating feeds. Bathroom sanitaryware, tiling, and fitting costs are included in the Bathrooms section. Partial replumb typically covers replacing visible pipes and adding new connections. Full replumb replaces everything back to the rising main.",
+    visible: !!s6Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Plumbing scope",
+    sub: "Pipework infrastructure only. Bathroom sanitaryware and tiling are costed in the Bathrooms section.",
+    value: S.plumbing,
+    onPick: pick('plumbing'),
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'No change'
+    }, {
+      v: 'partial',
+      label: 'Partial replumb',
+      small: 'Selective circuits — hot/cold feeds to affected rooms only'
+    }, {
+      v: 'full',
+      label: 'Full replumb',
+      small: 'All hot/cold/waste pipework replaced throughout'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 8,
+    total: TOTAL,
+    answered: s8Ans,
+    outOf: s8Of,
+    done: !!s8Done,
+    title: "Mechanical",
+    info: "Boiler, heating system, ventilation, and smart home controls. Underfloor heating is costed separately from radiators \u2014 most projects use electric UFH in bathrooms and radiators elsewhere. MVHR (heat recovery ventilation) is increasingly common in full refurbs of well-sealed properties.",
+    visible: !!s7Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Boiler",
+    value: S.boiler,
+    onPick: pick('boiler'),
+    cols: 2,
+    options: [{
+      v: 'keep',
+      label: 'Keep existing'
+    }, {
+      v: 'replace',
+      label: 'Replace like-for-like'
+    }, {
+      v: 'combi',
+      label: 'New combi',
+      small: '£2,500–£4,500'
+    }, {
+      v: 'system',
+      label: 'System boiler',
+      small: '£3,200–£5,800'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Underfloor heating",
+    sub: "Electric in wet rooms only. Wet system for ground floor or whole property.",
+    value: S.ufhZone,
+    onPick: pick('ufhZone'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'None'
+    }, {
+      v: 'wet-rooms',
+      label: 'Wet rooms only',
+      small: `Electric UFH · bathrooms${S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? ' + kitchen floor' : ''} · £40–£75/m²`
+    }, ...(S.floors > 1 ? [{
+      v: 'ground-floor',
+      label: 'Ground floor only',
+      small: 'Wet UFH · ground floor · £80–£130/m²'
+    }, {
+      v: 'whole-house',
+      label: 'Whole house',
+      small: 'Wet UFH all floors · £80–£130/m²'
+    }] : [{
+      v: 'whole-house',
+      label: 'Whole property',
+      small: 'Wet UFH throughout · £80–£130/m²'
+    }])]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Ventilation",
+    value: S.ventilation,
+    onPick: pick('ventilation'),
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'None'
+    }, {
+      v: 'extractors',
+      label: 'Extractors',
+      small: '£600–£1,800'
+    }, {
+      v: 'mvhr',
+      label: 'MVHR system',
+      small: '£3,500–£12,000'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Smart home / AV",
+    value: S.smart,
+    onPick: pick('smart'),
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'None'
+    }, {
+      v: 'basic',
+      label: 'Basic',
+      small: '£1,500–£4,000'
+    }, {
+      v: 'full',
+      label: 'Full AV',
+      small: '£10,000–£25,000'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Radiators being replaced?",
+    value: S.replaceRads,
+    onPick: pick('replaceRads'),
+    cols: 2,
+    options: [{
+      v: 'yes',
+      label: 'Yes — replace radiators'
+    }, {
+      v: 'no',
+      label: 'No — keep existing'
+    }]
+  }), S.replaceRads === 'yes' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Stepper, {
+    label: "Number of radiators",
+    sub: "Count all radiators being replaced across all floors",
+    value: S.radCount,
+    onChange: v => set('radCount', v),
+    min: 0,
+    max: 40
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Radiator finish",
+    value: S.radTier,
+    onPick: pick('radTier'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: '£250–£450 each',
+      tooltip: 'Stelrad Compact, Kudox, Milano Alpha'
+    }, {
+      v: 'premium',
+      label: 'Premium',
+      small: '£500–£1,200 each',
+      tooltip: 'Bisque Classic, Vogue Neva, Zehnder Charleston'
+    }, {
+      v: 'designer',
+      label: 'Designer',
+      small: '£1,200–£3,500+ each',
+      tooltip: 'Tubes Radiatori, Bisque Arteplano, Runtal'
+    }]
+  }))), /*#__PURE__*/React.createElement(Section, {
+    num: 9,
+    total: TOTAL,
+    answered: s9Ans,
+    outOf: s9Of,
+    done: !!s9Done,
+    title: "Kitchen",
+    info: "Kitchen costs cover supply and installation of the units, worktops, and appliances. The specification tiers reflect real London market brands \u2014 Standard is Howdens/Magnet, Premium is Leicht/Tom Howley, Designer is Bulthaup/Poliform. The kitchen area is deducted from your GIA for other rate calculations.",
+    visible: !!s8Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Kitchen scope",
+    value: S.kitchenScope,
+    onPick: pick('kitchenScope'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'No kitchen'
+    }, {
+      v: 'keep',
+      label: 'Keep existing'
+    }, {
+      v: 'replace',
+      label: 'Replace kitchen'
+    }, {
+      v: 'new-layout',
+      label: 'New kitchen — new layout'
+    }]
+  }), kitActive && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Sel, {
+    label: "Kitchen specification",
+    value: S.kitTier,
+    onPick: pick('kitTier'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'Howdens, Magnet, Wren',
+      tooltip: 'Howdens, Magnet, Wickes, Wren. Laminate or quartz worktop'
+    }, {
+      v: 'premium',
+      label: 'Premium',
+      small: 'Leicht, Hacker, Nobilia',
+      tooltip: 'Leicht, Hacker, Nobilia, Tom Howley. Quartz or granite worktop'
+    }, {
+      v: 'designer',
+      label: 'Designer',
+      small: 'Bulthaup, Poliform, SieMatic',
+      tooltip: 'Bulthaup, Poliform, SieMatic, Boffi. Book-matched marble or Dekton'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Kitchen size",
+    value: S.kitSize,
+    onPick: pick('kitSize'),
+    cols: 3,
+    options: [{
+      v: 'small',
+      label: 'Small',
+      small: 'Under 8m²'
+    }, {
+      v: 'medium',
+      label: 'Medium',
+      small: '8–15m²'
+    }, {
+      v: 'large',
+      label: 'Large',
+      small: '15m²+ / open plan'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Appliances",
+    value: S.appliances,
+    onPick: pick('appliances'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'None — client supply'
+    }, {
+      v: 'standard',
+      label: 'Standard integrated',
+      small: 'Bosch / Neff'
+    }, {
+      v: 'premium',
+      label: 'Premium integrated',
+      small: 'Miele / Gaggenau'
+    }, {
+      v: 'full',
+      label: 'Fully specified',
+      small: '£15,000–£30,000+'
+    }]
+  }))), /*#__PURE__*/React.createElement(Section, {
+    num: 10,
+    total: TOTAL,
+    answered: s10Ans,
+    outOf: s10Of,
+    done: !!s10Done,
+    title: "Bathrooms",
+    info: "Each full bathroom is priced at your selected tier. The bathroom area is also deducted from GIA for structure and finishes calculations \u2014 it's not double-counted. Cloakrooms (WC and basin only) are costed separately at a lower rate.",
+    visible: !!s9Done
+  }, /*#__PURE__*/React.createElement(Stepper, {
+    label: "Full bathrooms / shower rooms",
+    sub: "Include all rooms with shower, bath, or both",
+    value: S.bathrooms,
+    onChange: v => set('bathrooms', v),
+    min: 0,
+    max: 10
+  }), S.bathrooms > 0 && /*#__PURE__*/React.createElement(Sel, {
+    label: "Bathroom specification",
+    value: S.bathTier,
+    onPick: pick('bathTier'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'Roca, Ideal Standard',
+      tooltip: 'Roca, Ideal Standard, Duravit D-Code. Grohe, Hansgrohe Focus'
+    }, {
+      v: 'premium',
+      label: 'Premium',
+      small: 'Duravit, Geberit, V&B',
+      tooltip: 'Duravit ME/Happy D.2+, Geberit, Villeroy & Boch. Hansgrohe Metropol'
+    }, {
+      v: 'designer',
+      label: 'Designer',
+      small: 'V+A, Dornbracht',
+      tooltip: 'Victoria + Albert, Bette, Laufen Kartell. Dornbracht, Fantini, CEA Design'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Freestanding bath",
+    value: S.freestandingBath,
+    onPick: pick('freestandingBath'),
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'No'
+    }, {
+      v: '1',
+      label: 'Yes — 1 bathroom',
+      small: '+£1,500–£3,500'
+    }, {
+      v: '2plus',
+      label: '2+ bathrooms',
+      small: '+£3,000–£7,000'
+    }]
+  }), /*#__PURE__*/React.createElement(Stepper, {
+    label: "Cloakrooms / separate WCs",
+    sub: "WC + basin only. Costed at your bathroom tier.",
+    value: S.cloakrooms,
+    onChange: v => set('cloakrooms', v),
+    min: 0,
+    max: 4
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 11,
+    total: TOTAL,
+    answered: s11Ans,
+    outOf: s11Of,
+    done: !!s11Done,
+    title: "Bespoke Furniture",
+    info: "Fitted wardrobes, built-in storage, home office joinery. Each 'unit' is approximately one wardrobe bay \u2014 1.5 to 2.5m wide. This does not include freestanding furniture. If you're buying off-the-shelf wardrobes (IKEA PAX etc.), select No.",
+    visible: !!s10Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Bespoke built-in furniture?",
+    value: S.bespokeFurniture,
+    onPick: pick('bespokeFurniture'),
+    cols: 2,
+    options: [{
+      v: 'yes',
+      label: 'Yes — fitted wardrobes / cupboards'
+    }, {
+      v: 'no',
+      label: 'No built-in furniture'
+    }]
+  }), S.bespokeFurniture === 'yes' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Stepper, {
+    label: "Linear metres",
+    sub: "Total run of fitted furniture \u2014 wardrobes, storage, joinery",
+    value: S.furnitureLM,
+    onChange: v => set('furnitureLM', v),
+    min: 1,
+    max: 40
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Height",
+    sub: "Floor to top of unit",
+    value: S.furnitureHeight,
+    onPick: pick('furnitureHeight'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'Up to 2.2m — below cornice line'
+    }, {
+      v: 'full',
+      label: 'Full height',
+      small: '2.4m — floor to ceiling'
+    }, {
+      v: 'tall',
+      label: 'Tall / double',
+      small: '2.7m+ or double-height units'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Furniture specification",
+    value: S.furnitureTier,
+    onPick: pick('furnitureTier'),
+    cols: 3,
+    options: [{
+      v: 'standard',
+      label: 'Standard',
+      small: 'MDF, spray-painted',
+      tooltip: 'Moisture-resistant MDF, spray-finished'
+    }, {
+      v: 'premium',
+      label: 'Premium',
+      small: 'Laminated, soft-close, LEDs',
+      tooltip: 'Egger/Kronospan board, veneered MDF, soft-close drawers'
+    }, {
+      v: 'designer',
+      label: 'Designer',
+      small: 'Veneer, glass, bespoke metal',
+      tooltip: 'Veneered solid panels, glass shelving, integrated LED, push-to-open'
+    }]
+  }))), /*#__PURE__*/React.createElement(Section, {
+    num: 12,
+    total: TOTAL,
+    answered: s12Ans,
+    outOf: s12Of,
+    done: !!s12Done,
+    title: "Finishes",
+    info: "Flooring, decoration, and skirtings \u2014 costed against your actual floor and wall area, not just GIA. Decoration rates are applied to inferred wall area based on your layout and ceiling height. Bespoke wall treatments include specialist paint, panelling, fabric, or wallcoverings.",
+    visible: !!s11Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "Flooring",
+    value: S.flooring,
+    onPick: pick('flooring'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'No change'
+    }, {
+      v: 'eng-wood',
+      label: 'Engineered wood',
+      small: '£48–£125/m²'
+    }, {
+      v: 'solid-wood',
+      label: 'Solid wood',
+      small: '£85–£185/m²'
+    }, {
+      v: 'mixed',
+      label: 'Mixed — wood + tile'
+    }, {
+      v: 'lvt',
+      label: 'LVT',
+      small: '£35–£90/m²'
+    }, {
+      v: 'carpet',
+      label: 'Carpet in bedrooms',
+      small: '£22–£60/m²'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Decoration",
+    value: S.decoration,
+    onPick: pick('decoration'),
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'No change'
+    }, {
+      v: 'repaint',
+      label: 'Full repaint',
+      small: '£25–£40/m²'
+    }, {
+      v: 'repaint-feature',
+      label: 'Repaint + features',
+      small: '£42–£68/m²'
+    }, {
+      v: 'bespoke',
+      label: 'Bespoke wall treatments',
+      small: '£70–£125/m²'
+    }]
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Skirtings & architraves",
+    value: S.skirtings,
+    onPick: pick('skirtings'),
+    cols: 3,
+    options: [{
+      v: 'keep',
+      label: 'Keep existing'
+    }, {
+      v: 'standard',
+      label: 'Standard profile',
+      small: '£26–£44/lm'
+    }, {
+      v: 'bespoke',
+      label: 'Bespoke profile',
+      small: '£52–£105/lm'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 13,
+    total: TOTAL,
+    answered: s13Ans,
+    outOf: s13Of,
+    done: !!s13Done,
+    title: "Structural Works",
+    info: "Alterations to the primary structure: walls, loft conversions, extensions, basement works. Selecting any structural work increases the contingency rate from 15% to 18% \u2014 structural projects carry higher discovery risk. Extension and loft costs activate once you enter the area in m\xB2.",
+    visible: !!s12Done
+  }, /*#__PURE__*/React.createElement(MultiSel, {
+    label: "Select all that apply",
+    values: S.structural,
+    onToggle: toggleStruct,
+    cols: 2,
+    options: [{
+      v: 'none',
+      label: 'None'
+    }, {
+      v: 'walls',
+      label: 'Wall removal(s)',
+      small: 'Inc. RSJ + making good'
+    }, {
+      v: 'loft',
+      label: 'Loft conversion'
+    }, {
+      v: 'extension',
+      label: 'Extension'
+    }, {
+      v: 'basement',
+      label: 'Basement'
+    }]
+  }), S.structural.includes('loft') && /*#__PURE__*/React.createElement(NumInput, {
+    label: "Loft conversion area",
+    value: S.loftRaw,
+    onChange: v => set('loftRaw', v),
+    unit: S.loftUnit,
+    onUnitChange: v => set('loftUnit', v)
+  }), S.structural.includes('extension') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(NumInput, {
+    label: "Extension area",
+    value: S.extRaw,
+    onChange: v => set('extRaw', v),
+    unit: S.extUnit,
+    onUnitChange: v => set('extUnit', v)
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Storeys",
+    value: S.storeys,
+    onPick: pick('storeys'),
+    cols: 2,
+    options: [{
+      v: 'single',
+      label: 'Single storey'
+    }, {
+      v: 'double',
+      label: 'Double storey'
+    }]
+  })), S.structural.includes('basement') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(NumInput, {
+    label: "Basement area",
+    value: S.basRaw,
+    onChange: v => set('basRaw', v),
+    unit: S.basUnit,
+    onUnitChange: v => set('basUnit', v)
+  }), /*#__PURE__*/React.createElement(Sel, {
+    label: "Basement type",
+    value: S.basType,
+    onPick: pick('basType'),
+    cols: 2,
+    options: [{
+      v: 'fitout',
+      label: 'Fit-out of existing'
+    }, {
+      v: 'excavation',
+      label: 'New excavation'
+    }]
+  }))), /*#__PURE__*/React.createElement(Section, {
+    num: 14,
+    total: TOTAL,
+    answered: s14Ans,
+    outOf: s14Of,
+    done: !!s14Done,
+    title: "External Works",
+    info: "Garden landscaping and fa\xE7ade repairs sit outside the main build contract but are commonly scoped at the same time. Garden costs are driven by size and specification. Fa\xE7ade includes repointing, render, stonework \u2014 not painting, which is in finishes.",
+    visible: !!s12Done
+  }, /*#__PURE__*/React.createElement(MultiSel, {
+    label: "Select all that apply",
+    values: S.external,
+    onToggle: toggleExt,
+    cols: 3,
+    options: [{
+      v: 'none',
+      label: 'None'
+    }, {
+      v: 'garden',
+      label: 'Garden / landscaping'
+    }, {
+      v: 'facade',
+      label: 'Façade repairs',
+      small: '£10,000–£25,000'
+    }]
+  }), gardenSelected && /*#__PURE__*/React.createElement(Sel, {
+    label: "Garden size",
+    sub: "Indicative m\xB2 \u2014 drives landscaping budget",
+    value: S.gardenSize,
+    onPick: pick('gardenSize'),
+    cols: 3,
+    options: [{
+      v: 'small',
+      label: 'Small garden',
+      small: 'Up to 60m² · £7,200–£12,000'
+    }, {
+      v: 'medium',
+      label: 'Medium garden',
+      small: '60–120m² · £12,000–£20,400'
+    }, {
+      v: 'large',
+      label: 'Large garden',
+      small: '120m²+ · £18,700–£31,900'
+    }]
+  })), /*#__PURE__*/React.createElement(Section, {
+    num: 15,
+    total: TOTAL,
+    answered: s15Ans,
+    outOf: s15Of,
+    done: !!s15Done,
+    title: "Programme & Fees",
+    info: "Statutory fees cover building control, party wall surveyors, listed building consent applications, and licence to alter where applicable. These are calculated automatically from your inputs and are not optional \u2014 they're legal requirements.",
+    visible: !!s12Done
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.25)',
+      marginBottom: 12,
+      lineHeight: 1.7
+    }
+  }, "Statutory fees calculated automatically from your inputs. They are not optional."), /*#__PURE__*/React.createElement(Sel, {
+    label: "Programme priority",
+    value: S.programme,
+    onPick: pick('programme'),
+    cols: 2,
+    options: [{
+      v: 'flexible',
+      label: 'Flexible — no fixed date'
+    }, {
+      v: 'target',
+      label: 'I have a target move-in date'
+    }]
+  }), S.programme === 'target' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: 500,
+      fontSize: 12,
+      color: 'rgba(255,255,255,0.5)',
+      marginBottom: 8,
+      textTransform: 'uppercase'
+    }
+  }, "Preferred start date"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: S.targetDate,
+    onChange: e => set('targetDate', e.target.value),
+    style: {
+      height: 44,
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 4,
+      padding: '0 14px',
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 14,
+      color: 'var(--white)',
+      background: 'rgba(255,255,255,0.03)',
+      outline: 'none',
+      colorScheme: 'dark',
+      minWidth: 200
+    },
+    onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.4)',
+    onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'
+  }), !S.targetDate && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(235,83,36,0.6)',
+      marginTop: 6
+    }
+  }, "Required for report generation."))), /*#__PURE__*/React.createElement(Section, {
+    num: 16,
+    total: TOTAL,
+    answered: s16Ans,
+    outOf: s16Of,
+    done: !!s16Done,
+    title: "Purpose of This Estimate",
+    info: "This doesn't affect the numbers \u2014 it helps us understand where you are in the process so we can give you the most useful next step. Whether you're ready to start tomorrow or just running numbers on a potential purchase, the estimate is the same. What changes is what we do next.",
+    visible: !!s15Done
+  }, /*#__PURE__*/React.createElement(Sel, {
+    label: "What best describes where you are right now?",
+    value: S.purpose,
+    onPick: pick('purpose'),
+    cols: 2,
+    options: [{
+      v: 'ready',
+      label: 'Ready to start',
+      small: 'Project confirmed — looking for the right contractor'
+    }, {
+      v: 'planning',
+      label: 'Planning ahead',
+      small: 'Project confirmed — building the budget before going to market'
+    }, {
+      v: 'purchasing',
+      label: 'Considering a purchase',
+      small: 'Stress-testing renovation cost before making an offer'
+    }, {
+      v: 'exploring',
+      label: 'Just exploring',
+      small: 'No confirmed project — curious what it would cost'
+    }]
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'sticky',
+      top: 80,
+      maxHeight: 'calc(100vh - 100px)',
+      overflowY: 'auto',
+      scrollbarWidth: 'none'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginBottom: 7
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 2,
+      color: 'rgba(255,255,255,0.25)',
+      textTransform: 'uppercase'
+    }
+  }, "Progress"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 1.5,
+      color: 'var(--teal)',
+      fontWeight: 500
+    }
+  }, progress, " / ", TOTAL)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: 2,
+      background: 'rgba(255,255,255,0.05)',
+      borderRadius: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      height: '100%',
+      background: 'var(--teal)',
+      borderRadius: 1,
+      width: `${progress / TOTAL * 100}%`,
+      transition: 'width 500ms ease',
+      boxShadow: '0 0 8px rgba(0,151,141,0.5)'
+    }
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8,
+      overflow: 'hidden',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '10px 16px',
+      background: 'rgba(255,255,255,0.03)',
+      borderBottom: '1px solid rgba(255,255,255,0.07)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6
+    }
+  }, [0, 1, 2].map(i => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    style: {
+      width: 7,
+      height: 7,
+      borderRadius: '50%',
+      background: 'rgba(255,255,255,0.08)'
+    }
+  }))), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 2,
+      color: 'rgba(255,255,255,0.2)',
+      textTransform: 'uppercase'
+    }
+  }, "MG-CALC-V5"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 2,
+      color: est && allDone ? 'var(--teal)' : 'rgba(255,255,255,0.2)',
+      textTransform: 'uppercase'
+    }
+  }, est && allDone ? 'LIVE' : 'STANDBY')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '22px 20px 18px',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
+      position: 'relative',
+      overflow: 'hidden'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      top: -50,
+      right: -50,
+      width: 180,
+      height: 180,
+      background: 'radial-gradient(circle,rgba(0,151,141,0.07) 0%,transparent 70%)',
+      pointerEvents: 'none'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 2.5,
+      color: 'var(--teal)',
+      textTransform: 'uppercase',
+      marginBottom: 14
+    }
+  }, "Live estimate \xB7 ex. VAT"), est && allDone ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.3)',
+      marginBottom: 4
+    }
+  }, "LOW \xA0 ", fmt(est.low)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 28,
+      fontWeight: 500,
+      color: 'var(--teal)',
+      lineHeight: 1.1,
+      textShadow: '0 0 24px rgba(0,151,141,0.3)'
+    }
+  }, fmt(est.mid)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.3)',
+      marginTop: 4
+    }
+  }, "HIGH ", fmt(est.high)), est.timeline && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      paddingTop: 14,
+      borderTop: '1px solid rgba(255,255,255,0.05)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'Orbitron,sans-serif',
+      fontSize: 9,
+      letterSpacing: 2,
+      color: 'rgba(255,255,255,0.25)',
+      textTransform: 'uppercase',
+      marginBottom: 6
+    }
+  }, "Programme estimate"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 20,
+      fontWeight: 500,
+      color: 'var(--white)'
+    }
+  }, est.timeline.fmtW(est.timeline.grandTotal.weeks)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.2)',
+      marginTop: 3
+    }
+  }, "total from today \xB7 inc. pre-construction")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(0,151,141,0.55)',
+      marginTop: 14,
+      lineHeight: 1.6,
+      paddingTop: 12,
+      borderTop: '1px solid rgba(255,255,255,0.05)'
+    }
+  }, "Contingency (", Math.round(est.cr * 100), "%) shown separately.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'rgba(0,151,141,0.75)'
+    }
+  }, "The PCSA stage is how the range becomes a fixed price."))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 26,
+      color: 'rgba(255,255,255,0.08)',
+      letterSpacing: 3,
+      paddingBottom: 8
+    }
+  }, "\u2014\u2014")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '16px 20px 20px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.25)',
+      lineHeight: 1.7,
+      marginBottom: 14
+    }
+  }, "16 line items \xB7 Phase timeline \xB7 Procurement flags.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: 'rgba(0,151,141,0.6)'
+    }
+  }, "All of it in one PDF.")), /*#__PURE__*/React.createElement("button", {
+    onClick: () => ready && setShowModal(true),
+    style: {
+      width: '100%',
+      padding: '13px 0',
+      background: ready ? 'var(--orange)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${ready ? 'var(--orange)' : 'rgba(255,255,255,0.07)'}`,
+      borderRadius: 4,
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontWeight: 600,
+      fontSize: 12,
+      color: ready ? 'var(--white)' : 'rgba(255,255,255,0.18)',
+      cursor: ready ? 'pointer' : 'default',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      transition: 'all 150ms'
+    },
+    onMouseEnter: e => {
+      if (ready) e.target.style.background = '#C94420';
+    },
+    onMouseLeave: e => {
+      if (ready) e.target.style.background = 'var(--orange)';
+    }
+  }, "SEND ME FULL BREAKDOWN"), !ready && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 10,
+      color: 'rgba(255,255,255,0.18)',
+      textAlign: 'center',
+      marginTop: 9
+    }
+  }, !allDone ? "Complete all sections to unlock." : "Select a start date to unlock."))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      var _S$zone3, _S$lastRefurb;
+      if (!est || !allDone || (S.programme === 'target' && !S.targetDate)) return;
+      const bd = calcDetailedBreakdown(S, est);
+      if (!bd) return;
+      const fmtM = n => n > 0 ? '£' + Math.round(n).toLocaleString('en-GB') : '—';
+      const rng = ([lo, hi]) => '£' + Math.round(lo).toLocaleString('en-GB') + ' – ' + '£' + Math.round(hi).toLocaleString('en-GB');
+      const mid = ([lo, hi]) => Math.round((lo + hi) / 2);
+      const propLabel = {
+        'period-house': 'Period House',
+        'period-flat': 'Period Flat / Maisonette',
+        'newbuild-house': 'New-build House',
+        'newbuild-flat': 'New-build Flat'
+      }[S.propertyType] || S.propertyType || '—';
+      const sectionHTML = bd.sections.map(sec => {
+        const secMid = mid(sec.total);
+        const secLo = sec.total[0];
+        const secHi = sec.total[1];
+        const variance = Math.round((secHi - secLo) / 2);
+        if (secMid === 0 && sec.lines.length === 0) return '';
+        const linesHTML = sec.lines.map(l => `
+                  <tr>
+                    <td style="padding:8px 12px;font-size:12px;color:#374151;border-bottom:1px solid #F3F4F6">${l.label}<br><span style="font-size:11px;color:#9CA3AF">${l.note}</span></td>
+                    <td style="padding:8px 12px;font-size:13px;font-family:IBM Plex Mono,monospace;color:#111827;text-align:right;border-bottom:1px solid #F3F4F6;white-space:nowrap">${fmtM(l.value)}</td>
+                  </tr>`).join('');
+        return `
+                  <div style="margin-bottom:28px;break-inside:avoid">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;background:#F8FAFC;border-left:3px solid #00978D;margin-bottom:0">
+                      <span style="font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;color:#051230;text-transform:uppercase;letter-spacing:0.5px">${sec.title}</span>
+                      <div style="text-align:right">
+                        <div style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:500;color:#051230">${fmtM(secMid)}</div>
+                        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#6B7280">Range: ${rng(sec.total)} · ±${fmtM(variance)}</div>
+                      </div>
+                    </div>
+                    ${sec.lines.length > 0 ? `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;border-top:none">${linesHTML}</table>` : '<div style="padding:8px 12px;font-size:11px;color:#9CA3AF;font-family:IBM Plex Mono,monospace;border:1px solid #E5E7EB;border-top:none">Included in estimate — no further sub-division at this stage.</div>'}
+                  </div>`;
+      }).join('');
+      const progHTML = bd.programme.map(p => `
+                <tr style="${p.isHeader ? 'background:#F0FDF9' : ''}">
+                  <td style="padding:${p.isHeader ? '10' : '7'}px 12px;font-size:${p.isHeader ? '11' : '12'}px;font-weight:${p.isHeader ? '600' : '400'};color:${p.isHeader ? '#00786E' : '#374151'};font-family:${p.isHeader ? 'Space Grotesk,sans-serif' : 'inherit'};text-transform:${p.isHeader ? 'uppercase' : 'none'};letter-spacing:${p.isHeader ? '0.5' : '0'}px;border-bottom:1px solid #F3F4F6">${p.phase}${p.note ? '<br><span style=\'font-size:10px;color:#9CA3AF;font-family:inherit;font-weight:400;text-transform:none\'>' + p.note + '</span>' : ''}</td>
+                  <td style="padding:${p.isHeader ? '10' : '7'}px 12px;font-family:IBM Plex Mono,monospace;font-size:${p.isHeader ? '13' : '12'}px;font-weight:${p.isHeader ? '600' : '400'};color:${p.isAccent ? '#00978D' : p.isHeader ? '#051230' : '#374151'};text-align:right;border-bottom:1px solid #F3F4F6;white-space:nowrap">${p.weeks}</td>
+                </tr>`).join('');
+      const driversHTML = bd.varianceDrivers.map((d, i) => `
+                <div style="display:flex;gap:12px;margin-bottom:12px">
+                  <div style="width:20px;height:20px;border-radius:50%;background:#E6F5F4;display:flex;align-items:center;justify-content:center;font-family:IBM Plex Mono,monospace;font-size:10px;color:#00978D;font-weight:500;flex-shrink:0;margin-top:2px">${i + 1}</div>
+                  <p style="font-size:13px;color:#374151;line-height:1.6;margin:0">${d}</p>
+                </div>`).join('');
+      const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget Estimate — Myrmex Group · ${bd.ref}<\/title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Space Grotesk,sans-serif;color:#111827;background:#fff;font-size:14px;line-height:1.5}
+@media print{.no-print{display:none!important}body{font-size:12px}h1{font-size:22px}}
+<\/style>
+<\/head>
+<body>
+<div style="max-width:820px;margin:0 auto;padding:48px 40px">
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:2px solid #051230;margin-bottom:32px">
+    <div>
+      <div style="font-family:Space Grotesk,sans-serif;font-weight:700;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#00978D;margin-bottom:8px">Myrmex Group</div>
+      <h1 style="font-weight:300;font-size:26px;color:#051230;line-height:1.2;margin-bottom:4px">Budget Estimate</h1>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#9CA3AF">${bd.ref} · Generated ${bd.generatedAt} · Ex. VAT</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#9CA3AF;margin-bottom:4px">Most likely outcome</div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:28px;font-weight:500;color:#051230">£${Math.round(bd.midpoint).toLocaleString('en-GB')}</div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#6B7280;margin-top:2px">Range: ${rng(bd.grandTotal)}</div>
+    </div>
+  </div>
+
+  <!-- Project summary -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px">
+    ${[['Property', propLabel], ['Location', ((_S$zone3 = S.zone) === null || _S$zone3 === void 0 ? void 0 : _S$zone3.toUpperCase()) || '—'], ['GIA', `${S.giaRaw}${S.giaUnit === 'sqft' ? 'sq ft' : 'm²'}`], ['Scope', S.scope === 'full' ? 'Full refurb' : S.scope === 'partial' ? 'Selected rooms' : S.scope === 'kit-bath' ? 'Kit + bath' : 'Structural'], ['Bedrooms', `${S.bedrooms}`], ['Bathrooms', `${S.bathrooms}`], ['Floors', `${S.floors}`], ['Last refurb', ((_S$lastRefurb = S.lastRefurb) === null || _S$lastRefurb === void 0 ? void 0 : _S$lastRefurb.replace('20plus', '20+ yrs').replace('10to20', '10–20 yrs').replace('5to10', '5–10 yrs')) || '—']].map(([k, v]) => `<div style="padding:12px;background:#F8FAFC;border-radius:4px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${k}</div><div style="font-weight:500;font-size:13px;color:#051230">${v}</div></div>`).join('')}
+  </div>
+
+  <!-- Cost sections -->
+  <div style="margin-bottom:32px">
+    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">Cost Breakdown — Midpoints at Line Level</h2>
+    ${sectionHTML}
+  </div>
+
+  <!-- Contingency -->
+  <div style="margin-bottom:32px;padding:16px;background:#F0FDF9;border:1.5px solid #00978D;border-radius:4px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+      <div>
+        <div style="font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;color:#051230;text-transform:uppercase;letter-spacing:0.5px">Contingency — ${Math.round(bd.contingency.rate * 100)}%</div>
+        <div style="font-size:12px;color:#374151;margin-top:2px">${bd.contingency.reason}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:500;color:#00978D">${fmtM(bd.contingency.mid)}</div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#6B7280">Range: ${rng(bd.contingency.total)}</div>
+      </div>
+    </div>
+    <p style="font-size:12px;color:#374151;line-height:1.6">Contingency is shown separately and not hidden inside individual line items. It is a named, contractual buffer — not a margin. The PCSA stage converts this estimate into a fixed-price contract, at which point contingency is re-assessed against a confirmed specification.</p>
+  </div>
+
+  <!-- Grand total -->
+  <div style="margin-bottom:40px;padding:20px;background:#051230;border-radius:4px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:2px;color:#00978D;text-transform:uppercase;margin-bottom:6px">Total Estimate · Ex. VAT</div>
+        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:rgba(255,255,255,0.4)">Range: ${rng(bd.grandTotal)}</div>
+      </div>
+      <div style="font-family:IBM Plex Mono,monospace;font-size:30px;font-weight:500;color:#fff">£${Math.round(bd.midpoint).toLocaleString('en-GB')}</div>
+    </div>
+  </div>
+
+  <!-- Programme -->
+  ${bd.programme.length > 0 ? `
+  <div style="margin-bottom:40px">
+    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">Programme Estimate</h2>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB">
+      ${progHTML}
+    </table>
+    <p style="font-size:11px;color:#9CA3AF;margin-top:8px;font-family:IBM Plex Mono,monospace">Pre-construction gates run in parallel — the longest governs. Programme assumes continuous contractor engagement and no client-side delays.</p>
+  </div>` : ''}
+
+  <!-- Variance drivers -->
+  <div style="margin-bottom:40px">
+    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">What Drives the Variance in This Estimate</h2>
+    ${driversHTML}
+  </div>
+
+  <!-- Footer / CTA -->
+  <div style="padding:24px;background:#F8FAFC;border-radius:4px;text-align:center;border:1px solid #E5E7EB">
+    <div style="font-weight:600;font-size:16px;color:#051230;margin-bottom:8px">The PCSA stage is how this range becomes a fixed price.</div>
+    <p style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto">A Pre-Construction Services Agreement gives us access to your property to survey, specify, and confirm every element before committing to a contract price. No obligation to proceed. Full transparency on methodology.</p>
+    <a href="#" style="display:inline-block;padding:12px 32px;background:#EB5324;color:#fff;font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;text-decoration:none;border-radius:3px;letter-spacing:0.5px">LET'S DO IT — Book a Call</a>
+  </div>
+
+  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #E5E7EB;display:flex;justify-content:space-between">
+    <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF">Myrmex Group · Central London Residential Renovation</div>
+    <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF">${bd.ref} · This estimate is indicative and subject to survey</div>
+  </div>
+
+</div>
+<div class="no-print" style="position:fixed;bottom:20px;right:20px">
+  <button onclick="window.print()" style="padding:10px 20px;background:#051230;color:#fff;border:none;border-radius:4px;font-family:Space Grotesk,sans-serif;font-weight:500;font-size:13px;cursor:pointer">Print / Save as PDF</button>
+</div>
+<\/body><\/html>`;
+      const w = window.open('', '_blank');
+      w.document.write(html);
+      w.document.close();
+    },
+    style: {
+      width: '100%',
+      padding: '10px 0',
+      marginTop: 0,
+      background: 'rgba(235,83,36,0.08)',
+      border: '1px dashed rgba(235,83,36,0.3)',
+      borderRadius: 4,
+      fontFamily: 'Orbitron,sans-serif',
+      fontWeight: 500,
+      fontSize: 9,
+      color: 'rgba(235,83,36,0.6)',
+      cursor: ready ? 'pointer' : 'default',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      transition: 'all 150ms'
+    },
+    onMouseEnter: e => {
+      if (ready) {
+        e.target.style.background = 'rgba(235,83,36,0.14)';
+        e.target.style.color = 'rgba(235,83,36,0.9)';
+      }
+    },
+    onMouseLeave: e => {
+      e.target.style.background = 'rgba(235,83,36,0.08)';
+      e.target.style.color = 'rgba(235,83,36,0.6)';
+    }
+  }, "\u2B07 DEV \u2014 View Full Report")))));
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(/*#__PURE__*/React.createElement(Calculator, null));
+</script>
+</body>
+</html>
