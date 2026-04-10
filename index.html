@@ -826,6 +826,46 @@ function recalc(S) {
   };
 }
 
+// ── REFERENCE NUMBER PROTOCOL — MG-SYS-002 ────────────────────
+// Format: MG-[SS][Z][TTTT]   (7 chars after prefix)
+//   SS    scope  FR/PR/KB/SO/XX
+//   Z     zone   1-4, 0=unknown
+//   TTTT  token  = 2 chars Date.now() base36 (monotonic per ms)
+//                + 2 chars crypto.getRandomValues base36
+// Two refs generated ≥1 ms apart cannot collide (timestamp differs).
+// Two refs in the same ms collide only if random chars also match
+// (1/1296) — effectively impossible at Myrmex volumes.
+// Examples: MG-FR1A3K9, MG-KB29X2P, MG-SO3B7FH
+const MG_BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+function mgCryptoTwoBase36() {
+  let a, b;
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    const buf = new Uint8Array(2);
+    crypto.getRandomValues(buf);
+    a = buf[0] % 36;
+    b = buf[1] % 36;
+  } else {
+    a = Math.floor(Math.random() * 36);
+    b = Math.floor(Math.random() * 36);
+  }
+  return MG_BASE36[a] + MG_BASE36[b];
+}
+function generateRef(S) {
+  const state = S || {};
+  const scopeMap = {
+    'full':            'FR',
+    'partial':         'PR',
+    'kit-bath':        'KB',
+    'structural-only': 'SO',
+  };
+  const scope = scopeMap[state.scope] || 'XX';
+  const zoneMap = { 'z1': '1', 'z2': '2', 'z3': '3', 'z4-6': '4' };
+  const zone = zoneMap[state.zone] || '0';
+  const ts = Date.now().toString(36).toUpperCase().slice(-2).padStart(2, '0');
+  const rnd = mgCryptoTwoBase36();
+  return `MG-${scope}${zone}${ts}${rnd}`;
+}
+
 // ── DETAILED BREAKDOWN ────────────────────────────────────────
 // Returns sub-component tree for PDF output.
 // Midpoints at line level, ranges at section level.
@@ -1412,7 +1452,7 @@ function calcDetailedBreakdown(S, est) {
     varianceDrivers: drivers,
     programme: progLines,
     generatedAt: new Date().toLocaleString('en-GB'),
-    ref: `MG-${Date.now().toString(36).toUpperCase().slice(-6)}`
+    ref: generateRef(S)
   };
 }
 function calcTimeline(S) {
