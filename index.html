@@ -2190,6 +2190,16 @@ const ContactModal = ({
   const [phase, setPhase] = useState('capture');
   const [confirmedRef, setConfirmedRef] = useState('');
 
+  // On confirmation, redirect to the Myrmex homepage after 3 seconds so the
+  // user has just long enough to see the ref before moving on.
+  React.useEffect(() => {
+    if (phase !== 'confirmed') return;
+    const timer = setTimeout(() => {
+      window.location.href = 'https://myrmexgroup.co.uk';
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
   const nameValid = name.trim().length > 0;
   const emailValid = email.trim().length > 0 && email.includes('@') && email.includes('.');
   const formValid = nameValid && emailValid;
@@ -2398,7 +2408,7 @@ const ContactModal = ({
       }, confirmedRef),
       /*#__PURE__*/React.createElement("div", {
         style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }
-      }, "We\u2019ll be in touch within 24 hours.")
+      }, "Chaos is Optional")
     ),
 
     /* ── ERROR ── */
@@ -4303,6 +4313,8 @@ body{font-family:Space Grotesk,sans-serif;color:#111827;background:#fff;font-siz
       w.document.close();
     },
     style: {
+      // Dev-only preview button — hidden in production per request
+      display: 'none',
       width: '100%',
       padding: '10px 0',
       marginTop: 0,
