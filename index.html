@@ -1,25 +1,122 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Myrmex Group · Budget Calculator</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#08080E">
+  <meta name="robots" content="index, follow">
+
+  <title>Renovation cost calculator London — instant budget estimate | Myrmex Group</title>
+  <meta name="description" content="Get an estimated renovation budget for your Central London property. No phone call. No meeting. Just the number. Covers Kensington, Chelsea, Mayfair, and more.">
+
+  <link rel="canonical" href="https://myrmexgroup.co.uk/how-much">
+  <link rel="alternate" hreflang="en-gb" href="https://myrmexgroup.co.uk/how-much">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://myrmexgroup.co.uk/how-much">
+  <meta property="og:site_name" content="Myrmex Group">
+  <meta property="og:title" content="Renovation cost calculator London — instant budget estimate | Myrmex Group">
+  <meta property="og:description" content="Get an estimated renovation budget for your Central London property. No phone call. No meeting. Just the number.">
+  <meta property="og:image" content="https://myrmexgroup.co.uk/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Myrmex Group wordmark on dark background with tagline: Residential renovation, Central London">
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Renovation cost calculator London — instant budget estimate | Myrmex Group">
+  <meta name="twitter:description" content="Get an estimated renovation budget for your Central London property. No phone call. No meeting. Just the number.">
+  <meta name="twitter:image" content="https://myrmexgroup.co.uk/assets/og-image.png">
+
+  <!-- LocalBusiness Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HomeAndConstructionBusiness",
+    "name": "Myrmex Group",
+    "url": "https://myrmexgroup.co.uk",
+    "email": "team@myrmexgroup.co.uk",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "London",
+      "addressRegion": "Greater London",
+      "postalCode": "W1",
+      "addressCountry": "GB"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "51.5074",
+      "longitude": "-0.1278"
+    },
+    "areaServed": [
+      {"@type": "City", "name": "Kensington"},
+      {"@type": "City", "name": "Chelsea"},
+      {"@type": "City", "name": "Mayfair"},
+      {"@type": "City", "name": "Belgravia"},
+      {"@type": "City", "name": "Marylebone"}
+    ],
+    "openingHoursSpecification": [{
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+      "opens": "08:00",
+      "closes": "18:00"
+    }],
+    "priceRange": "$$$",
+    "description": "Residential renovation contractor in Central London. Systems-led delivery with pre-construction cost lock, 13-gate programme, and weekly governance reporting."
+  }
+  </script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Orbitron:wght@500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+
+<!-- React production UMD -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
 <style>
-:root {
-  --dark-base: #08080E; --dark-mid: #0E0E16; --teal: #00978D;
-  --teal-dim: rgba(0,151,141,0.7); --orange: #EB5324; --orange-hover: #C94420;
-  --white: #FFFFFF; --border-glass: rgba(255,255,255,0.08);
-  --border-glass-strong: rgba(255,255,255,0.12);
-  --glass-bg: rgba(255,255,255,0.03); --glass-bg-card: rgba(255,255,255,0.05);
-  --font-brand: 'Orbitron', sans-serif; --font-body: 'Space Grotesk', sans-serif;
-  --font-data: 'IBM Plex Mono', monospace;
-}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
-body { font-family: var(--font-body); font-weight: 400; color: var(--white); background: transparent; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 400;
+  color: #FFFFFF;
+  background: #08080E;
+  line-height: 1.6;
+}
+:root {
+  --dark-base:           #08080E;
+  --dark-mid:            #0E0E16;
+  --dark-lifted:         #141420;
+  --teal:                #00978D;
+  --teal-dim:            rgba(0,151,141,0.7);
+  --teal-glow:           rgba(0,151,141,0.12);
+  --orange:              #EB5324;
+  --orange-hover:        #C94420;
+  --white:               #FFFFFF;
+  --grey:                #6B7280;
+  --border-glass:        rgba(255,255,255,0.08);
+  --border-glass-strong: rgba(255,255,255,0.12);
+  --glass-bg:            rgba(255,255,255,0.03);
+  --glass-bg-card:       rgba(255,255,255,0.05);
+  --font-brand:          'Orbitron', sans-serif;
+  --font-body:           'Space Grotesk', sans-serif;
+  --font-data:           'IBM Plex Mono', monospace;
+}
+.inner { max-width: 1280px; margin: 0 auto; padding: 0 80px; }
+@media (max-width: 900px) { .inner { padding: 0 24px; } }
+
+/* Reveal animation */
+.reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: 0.15s; }
+.d2 { transition-delay: 0.30s; }
+.d3 { transition-delay: 0.45s; }
+
+/* Modal / spinner CSS */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 500;
   background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -38,2841 +135,824 @@ input[type=number] { -moz-appearance:textfield; }
 button { -webkit-font-smoothing:antialiased; }
 @keyframes calcSpin { to { transform: rotate(360deg); } }
 @keyframes calcPulse { 0%,100% { opacity:0.3; } 50% { opacity:1; } }
-.calc-spinner { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 0 16px; }
-.calc-spinner-ring { width:36px; height:36px; border:2px solid rgba(0,151,141,0.15); border-top-color:var(--teal); border-radius:50%; animation:calcSpin 1s linear infinite; }
-.calc-spinner-text { font-family:'Orbitron',sans-serif; font-size:9px; letter-spacing:2px; color:var(--teal); text-transform:uppercase; margin-top:14px; animation:calcPulse 1.5s ease infinite; }
-.questions-card { overflow: visible !important; }
-.section-header { position: -webkit-sticky; position: sticky; top: 0px; z-index: 10; background: rgba(8,8,14,0.97); }
+@keyframes accReveal { from { opacity:0; } to { opacity:1; } }
+@keyframes estFadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+.calc-layout { display:grid; grid-template-columns:1fr 340px; gap:28px; align-items:start; max-width:1120px; margin:0 auto; padding:24px 24px 80px; }
+@media (max-width:900px) { .calc-layout { grid-template-columns:1fr; } .calc-layout .calc-sidebar { position:relative !important; top:auto !important; order:-1; } }
 </style>
+
+<style>
+/* NAV v4 */
+.nav-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 64px;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 80px;
+  background: rgba(8,8,14,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 100;
+}
+.nav-wordmark {
+  font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 14px;
+  color: #FFFFFF; letter-spacing: 2px; text-decoration: none;
+}
+.nav-list { display: flex; align-items: center; gap: 28px; list-style: none; margin: 0; padding: 0; }
+.nav-link {
+  font-family: 'Orbitron', sans-serif; font-weight: 500; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 2px; color: #6B7280;
+  text-decoration: none; transition: color 150ms ease;
+}
+.nav-link:hover { color: #FFFFFF; }
+.nav-link.nav-link--active { color: #00978D; }
+.nav-cta {
+  font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 11px;
+  text-transform: uppercase; letter-spacing: 2px; color: #FFFFFF; text-decoration: none;
+  background: #EB5324; padding: 8px 20px; border-radius: 4px; transition: background 150ms ease;
+}
+.nav-cta:hover { background: #C94420; }
+.nav-cta.nav-link--active { box-shadow: 0 0 0 2px #00978D; }
+.nav-toggle {
+  display: none; background: none; border: none; cursor: pointer;
+  width: 32px; height: 32px; position: relative; padding: 0;
+}
+.nav-toggle-bar {
+  display: block; width: 24px; height: 2px; background: #FFFFFF; border-radius: 1px;
+  position: absolute; left: 4px; transition: transform 200ms ease, opacity 200ms ease;
+}
+.nav-toggle-bar:nth-child(1) { top: 8px; }
+.nav-toggle-bar:nth-child(2) { top: 15px; }
+.nav-toggle-bar:nth-child(3) { top: 22px; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(2) { opacity: 0; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+.nav-drawer {
+  display: none; position: fixed; top: 64px; left: 0; right: 0; bottom: 0;
+  background: rgba(8,8,14,0.97); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  z-index: 99; padding: 48px 24px; flex-direction: column; gap: 0;
+}
+.nav-drawer.nav-drawer--open { display: flex; }
+.nav-drawer-link {
+  font-family: 'Orbitron', sans-serif; font-weight: 500; font-size: 14px;
+  text-transform: uppercase; letter-spacing: 3px; color: #6B7280; text-decoration: none;
+  padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.08); transition: color 150ms ease;
+}
+.nav-drawer-link:last-child { border-bottom: none; }
+.nav-drawer-link:hover { color: #FFFFFF; }
+.nav-drawer-link.nav-link--active { color: #00978D; }
+.nav-drawer-cta {
+  font-family: 'Orbitron', sans-serif; font-weight: 600; font-size: 14px;
+  text-transform: uppercase; letter-spacing: 3px; color: #FFFFFF; text-decoration: none;
+  text-align: center; background: #EB5324; padding: 16px 0; border-radius: 4px;
+  margin-top: 12px; transition: background 150ms ease;
+}
+.nav-drawer-cta:hover { background: #C94420; }
+.nav-drawer-cta.nav-link--active { box-shadow: 0 0 0 2px #00978D; }
+@media (max-width: 900px) {
+  .nav-bar { padding: 0 24px; }
+  .nav-list { display: none; }
+  .nav-toggle { display: block; }
+}
+</style>
+
+<!-- Z1 styles -->
+<style>
+.z1-section {
+  --z1-dark-base: #08080E; --z1-dark-mid: #0E0E16;
+  --z1-dark-grad: linear-gradient(180deg, #08080E 0%, #0E0E16 100%);
+  --z1-teal: #00978D; --z1-teal-glow: rgba(0,151,141,0.05);
+  --z1-white: #FFFFFF; --z1-white-60: rgba(255,255,255,0.6);
+  --z1-font-body: 'Space Grotesk', sans-serif;
+  --z1-font-sys: 'Orbitron', sans-serif;
+  --z1-font-mono: 'IBM Plex Mono', monospace;
+  background: var(--z1-dark-grad); padding: 168px 80px 96px;
+  position: relative; overflow: hidden;
+}
+.z1-section::before {
+  content: ''; position: absolute; top: -200px; right: -200px;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, var(--z1-teal-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+.z1-inner { max-width: 1080px; margin: 0; position: relative; z-index: 1; }
+.z1-label {
+  font-family: var(--z1-font-sys); font-weight: 500; font-size: 11px;
+  color: var(--z1-teal); text-transform: uppercase; letter-spacing: 3px;
+  margin: 0 0 32px; display: block;
+}
+.z1-headline {
+  font-family: var(--z1-font-body); font-weight: 500; font-size: 56px;
+  line-height: 1.15; letter-spacing: -0.01em; color: var(--z1-white); margin: 0;
+}
+.z1-punchline {
+  font-family: var(--z1-font-body); font-weight: 400; font-size: 20px;
+  line-height: 1.6; color: var(--z1-teal); margin: 24px 0 0; max-width: 560px;
+}
+.z1-duration {
+  font-family: var(--z1-font-mono); font-weight: 400; font-size: 12px;
+  line-height: 1.6; color: var(--z1-white-60); margin: 40px 0 0;
+  letter-spacing: 0.02em; text-transform: none;
+}
+/* HIGH-08: indicative-only framing directly under the Z1 hero, above the calculator. */
+.z1-framing {
+  font-family: var(--z1-font-body); font-weight: 400; font-size: 14px;
+  line-height: 1.6; color: rgba(255,255,255,0.4); margin: 24px 0 0;
+}
+@media (max-width: 900px) {
+  .z1-section { padding: 140px 24px 72px; }
+  .z1-headline { font-size: 40px; }
+  .z1-punchline { font-size: 18px; margin-top: 20px; }
+  .z1-label { margin-bottom: 24px; }
+  .z1-duration { margin-top: 32px; }
+}
+@media (max-width: 600px) {
+  .z1-section { padding: 120px 24px 56px; }
+  .z1-headline { font-size: 30px; }
+  .z1-punchline { font-size: 16px; }
+  .z1-duration { font-size: 11px; }
+  .z1-framing { font-size: 13px; }
+}
+</style>
+
+<!-- Z3 styles -->
+<style>
+.z3-section {
+  --z3-dark-base: #08080E; --z3-dark-mid: #0E0E16;
+  --z3-dark-grad: linear-gradient(180deg, #08080E 0%, #0E0E16 100%);
+  --z3-orange: #EB5324; --z3-orange-hover: #C94420;
+  --z3-teal: #00978D; --z3-white: #FFFFFF;
+  --z3-font-body: 'Space Grotesk', sans-serif;
+  --z3-font-sys: 'Orbitron', sans-serif;
+  background: var(--z3-dark-grad); padding: 128px 80px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; box-sizing: border-box;
+}
+.z3-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+.z3-bridge-label {
+  font-family: var(--z3-font-sys); font-weight: 500; font-size: 9px;
+  color: var(--z3-teal); text-transform: uppercase; letter-spacing: 0.12em;
+  margin: 0 0 8px;
+}
+.z3-bridge-text {
+  font-family: var(--z3-font-body); font-weight: 400; font-size: 14px;
+  color: rgba(255,255,255,0.55); margin: 0 0 24px; text-align: center;
+}
+.z3-cta-row { display: flex; align-items: center; justify-content: center; gap: 24px; }
+.z3-btn-primary, .z3-btn-secondary {
+  font-family: var(--z3-font-body); font-weight: 600; font-size: 14px; line-height: 1;
+  text-transform: uppercase; letter-spacing: 1px; height: 52px; padding: 0 32px;
+  border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; text-decoration: none; box-sizing: border-box; white-space: nowrap;
+}
+.z3-btn-primary {
+  background: var(--z3-orange); color: var(--z3-white);
+  border: 1.5px solid var(--z3-orange); transition: background 150ms ease, border-color 150ms ease;
+}
+.z3-btn-primary:hover, .z3-btn-primary:focus-visible { background: var(--z3-orange-hover); border-color: var(--z3-orange-hover); }
+.z3-btn-secondary {
+  background: transparent; color: var(--z3-white);
+  border: 1.5px solid var(--z3-white); transition: border-color 150ms ease, color 150ms ease;
+}
+.z3-btn-secondary:hover, .z3-btn-secondary:focus-visible { border-color: var(--z3-teal); color: var(--z3-teal); }
+@media (max-width: 900px) { .z3-section { padding: 96px 24px; } }
+@media (max-width: 600px) {
+  .z3-section { padding: 80px 24px; }
+  .z3-cta-row { flex-direction: column; width: 100%; }
+  .z3-btn-primary, .z3-btn-secondary { width: 100%; }
+}
+</style>
+
+<!-- Footer styles -->
+<style>
+footer {
+  background: #08080E; border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 64px 0 32px; font-family: 'Space Grotesk', sans-serif;
+}
+footer .inner { max-width: 1120px; margin: 0 auto; padding: 0 48px; }
+.footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+.footer-col-label {
+  font-family: 'Orbitron', sans-serif; font-size: 10px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 3px; color: #00978D; display: block; margin-bottom: 20px;
+}
+.footer-col ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.footer-col ul li a {
+  font-family: 'Space Grotesk', sans-serif; font-weight: 400; font-size: 14px;
+  color: rgba(255,255,255,0.45); text-decoration: none; transition: color 150ms ease;
+}
+.footer-col ul li a:hover { color: #FFFFFF; }
+.footer-where-sep { width: 24px; height: 1px; background: rgba(255,255,255,0.08); margin: 8px 0 4px; }
+.footer-col ul li.footer-where a { font-size: 12px; color: rgba(255,255,255,0.25); letter-spacing: 0.5px; }
+.footer-col ul li.footer-where a:hover { color: rgba(255,255,255,0.55); }
+.footer-contact-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.footer-contact-list li { font-family: 'Space Grotesk', sans-serif; font-weight: 400; font-size: 14px; color: rgba(255,255,255,0.45); }
+.footer-contact-list li a { font-family: 'Space Grotesk', sans-serif; font-weight: 400; font-size: 14px; color: rgba(255,255,255,0.45); text-decoration: none; transition: color 150ms ease; }
+.footer-contact-list li a:hover { color: #FFFFFF; }
+.footer-companies-house { font-family: 'Space Grotesk', sans-serif; font-size: 14px; color: rgba(255,255,255,0.45); }
+.footer-companies-house span { font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.5px; }
+.footer-borough { font-family: 'Space Grotesk', sans-serif; font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 1px; margin-top: 16px; display: block; }
+.footer-bottom { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 12px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); }
+.footer-bottom span { font-family: 'Space Grotesk', sans-serif; font-size: 11px; color: rgba(255,255,255,0.2); letter-spacing: 1px; }
+.footer-legal { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0; }
+.footer-legal li { padding: 0 10px; position: relative; }
+.footer-legal li + li::before { content: '\00B7'; position: absolute; left: -2px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.18); font-size: 11px; }
+.footer-legal li a { font-family: 'Space Grotesk', sans-serif; font-weight: 400; font-size: 11px; letter-spacing: 0.5px; color: rgba(255,255,255,0.35); text-decoration: none; transition: color 150ms ease; }
+.footer-legal li a:hover { color: rgba(255,255,255,0.7); }
+@media (max-width: 900px) {
+  footer .inner { padding: 0 24px; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .footer-legal li { padding: 0 8px; }
+}
+</style>
+
 </head>
 <body>
+
+<!-- NAV -->
+<nav class="nav-bar" aria-label="Main navigation">
+  <a href="/" class="nav-wordmark">MYRMEX GROUP</a>
+  <ul class="nav-list">
+    <li><a href="/"         class="nav-link">WHY</a></li>
+    <li><a href="/who"      class="nav-link">WHO</a></li>
+    <li><a href="/how"      class="nav-link">HOW</a></li>
+    <li><a href="/what"     class="nav-link">WHAT</a></li>
+    <li><a href="/how-much" class="nav-link nav-link--active">HOW MUCH</a></li>
+    <li><a href="/start"    class="nav-cta">LET'S DO IT</a></li>
+  </ul>
+  <button class="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="nav-drawer">
+    <span class="nav-toggle-bar"></span>
+    <span class="nav-toggle-bar"></span>
+    <span class="nav-toggle-bar"></span>
+  </button>
+</nav>
+
+<div class="nav-drawer" id="nav-drawer" aria-label="Mobile navigation" aria-hidden="true">
+  <a href="/"         class="nav-drawer-link">WHY</a>
+  <a href="/who"      class="nav-drawer-link">WHO</a>
+  <a href="/how"      class="nav-drawer-link">HOW</a>
+  <a href="/what"     class="nav-drawer-link">WHAT</a>
+  <a href="/how-much" class="nav-drawer-link nav-link--active">HOW MUCH</a>
+  <a href="/start"    class="nav-drawer-cta">LET'S DO IT</a>
+</div>
+
+<script>
+(function () {
+  var active = document.querySelectorAll('.nav-link--active');
+  for (var i = 0; i < active.length; i++) { active[i].setAttribute('aria-current', 'page'); }
+  var toggle = document.querySelector('.nav-toggle');
+  var drawer = document.getElementById('nav-drawer');
+  if (toggle && drawer) {
+    toggle.addEventListener('click', function () {
+      var isOpen = drawer.classList.contains('nav-drawer--open');
+      drawer.classList.toggle('nav-drawer--open');
+      toggle.setAttribute('aria-expanded', String(!isOpen));
+      drawer.setAttribute('aria-hidden', String(isOpen));
+      toggle.setAttribute('aria-label', isOpen ? 'Open menu' : 'Close menu');
+    });
+  }
+})();
+</script>
+
+<!-- Z1 Hero -->
+<section class="z1-section" aria-labelledby="how-much-z1-h1">
+  <div class="z1-inner">
+    <span class="z1-label">Budget Calculator</span>
+    <h1 class="z1-headline reveal" id="how-much-z1-h1">Get a budget range.</h1>
+    <p class="z1-punchline reveal d1">The number exists. You should have it first.</p>
+    <p class="z1-duration">Approximate duration &mdash; 10 min</p>
+    <p class="z1-framing">An indicative budget range for your property &mdash; not a binding quote.</p>
+  </div>
+</section>
+
+<!-- HIGH-04: JavaScript-disabled fallback (sibling to #calc-root, not child — React wipes mount node children on first render) -->
 <noscript>
   <p style="font-family: 'Space Grotesk', sans-serif; color: #FFFFFF; padding: 40px; text-align: center; font-size: 16px; line-height: 1.6; margin: 0;">
     This calculator needs JavaScript to run.<br>
     <a href="/start" style="color: #00978D; text-decoration: underline;">Send us your details</a> and we'll prepare your estimate.
   </p>
 </noscript>
-<div id="root"></div>
-<script>
-const {
-  useState,
-  useCallback,
-  useMemo,
-  useRef,
-  useEffect
-} = React;
 
-// ── MG-SYS-003 · SERVER-SIDE PRICING FETCH LAYER ─────────────
+<!-- Calculator root replaces Z2 iframe -->
+<div id="calc-root"></div>
+
+<!-- Z3 Post-estimate CTA -->
+<section class="z3-section reveal" id="how-much-z3-cta" aria-labelledby="how-much-z3-h2">
+  <h2 class="z3-sr-only" id="how-much-z3-h2">Next step</h2>
+  <p class="z3-bridge-text">If the number works, the next move is a conversation.</p>
+  <div class="z3-cta-row">
+    <a href="/start" class="z3-btn-primary">LET'S DO IT</a>
+    <a href="https://calendly.com/team-myrmexgroup/30min" target="_blank" rel="noopener noreferrer"  class="z3-btn-secondary">BOOK A CALL</a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="inner">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <span class="footer-col-label">Pages</span>
+        <ul>
+          <li><a href="/why">WHY</a></li>
+          <li><a href="/who">WHO</a></li>
+          <li><a href="/how">HOW</a></li>
+          <li><a href="/what">WHAT</a></li>
+          <li><a href="/how-much">HOW MUCH</a></li>
+          <li><a href="/start">START</a></li>
+          <li aria-label="separator" class="footer-where-sep" role="presentation"></li>
+          <li class="footer-where"><a href="/where">WHERE</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <span class="footer-col-label">Contact</span>
+        <ul class="footer-contact-list">
+          <li><a href="mailto:team@myrmexgroup.co.uk">team@myrmexgroup.co.uk</a></li>
+          <li class="footer-companies-house">Companies House &mdash; <span>17089892</span></li>
+        </ul>
+        <span class="footer-borough">Kensington &middot; Chelsea &middot; Mayfair &middot; Belgravia &middot; Marylebone</span>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <ul class="footer-legal" aria-label="Legal">
+        <li><a href="/privacy">Privacy Policy</a></li>
+        <li><a href="/cookies">Cookie Policy</a></li>
+        <li><a href="/terms">Terms &amp; Conditions</a></li>
+        <li><a href="/disclaimer">Disclaimer</a></li>
+      </ul>
+      <span>&copy; 2026 Myrmex Group Ltd.</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Reveal observer -->
+<script>
+(function () {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('visible'); io.unobserve(en.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+})();
+</script>
+
+<!-- Calculator application -->
+<script>
+(function() {
+'use strict';
+var useState = React.useState;
+var useCallback = React.useCallback;
+var useMemo = React.useMemo;
+var useRef = React.useRef;
+var useEffect = React.useEffect;
+var e = React.createElement;
+
+// ── MG-SYS-003: SERVER-SIDE PRICING FETCH LAYER ──────────────
 // Pricing logic now lives in mg-submit/pricing.js. The client only:
 //   1. Asks for an HMAC token from /api/token
-//   2. Sends the state to /api/estimate (debounced) and renders the response
+//   2. Sends the state to /api/estimate when all 12 panels complete
 // Pricing constants and computation no longer ship to the browser.
 
-const CALCULATOR_VERSION = "9.0";
-const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+var CALCULATOR_VERSION = "9.0";
+var API_BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:3000'
   : 'https://mg-submit-production.up.railway.app';
 
-let _token = null;
-let _tokenExpires = 0;
-
-async function getToken() {
-  if (_token && Date.now() / 1000 < _tokenExpires - 30) return _token;
-  const res = await fetch(`${API_BASE}/api/token`, { credentials: 'omit' });
-  if (!res.ok) throw new Error('Token fetch failed');
-  const data = await res.json();
-  _token = data.token;
-  _tokenExpires = data.expires;
-  return _token;
+var _token = null;
+var _tokenExpires = 0;
+function getToken() {
+  if (_token && Date.now() / 1000 < _tokenExpires - 30) return Promise.resolve(_token);
+  return fetch(API_BASE + '/api/token', { credentials: 'omit' })
+    .then(function(res) { if (!res.ok) throw new Error('Token fetch failed'); return res.json(); })
+    .then(function(data) { _token = data.token; _tokenExpires = data.expires; return _token; });
 }
 
-// Estimate fetch is now a one-shot, fired only after all 16 sections are
-// answered (see the useEffect in Calculator()). No debounce — a real user
-// triggers 1-2 requests per session at most.
-async function fetchEstimate(S, setEstimate, setLoading, setError) {
-  setLoading(true);
-  setError(null);
-  try {
-    const token = await getToken();
-    const res = await fetch(`${API_BASE}/api/estimate`, {
+// One-shot fetch — fires only when all panels are complete (see Calculator's
+// useEffect on [allDone]). No debounce, no live-as-you-type; 1-2 requests
+// per session for a real user.
+function fetchEstimate(S, onResult, onError) {
+  getToken().then(function(token) {
+    return fetch(API_BASE + '/api/estimate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-MG-Token': token },
       credentials: 'omit',
       body: JSON.stringify(S)
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    // /api/estimate may return { estimate: null } for incomplete inputs.
-    // Otherwise the body IS the estimate object.
-    setEstimate(data && data.estimate !== undefined ? data.estimate : data);
-    setLoading(false);
-  } catch (err) {
-    console.error('Estimate fetch error:', err);
-    setError('Estimate unavailable');
-    setLoading(false);
-  }
+  })
+  .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
+  .then(function(data) { onResult(data && data.estimate !== undefined ? data.estimate : data); })
+  .catch(function(err) { console.error('Estimate fetch error:', err); onError('Estimate unavailable'); });
 }
 
-// ── Display formatters ───────────────────────────────────────
-// Pure number→string helpers preserved from the old pricing block. They
-// operate on backend-returned numbers; no rate-card information.
-const fmt = n => '£' + Math.round(n).toLocaleString('en-GB');
-const fmtR = (lo, hi) => `${fmt(lo)} – ${fmt(hi)}`;
-const fmtW = ([lo, hi]) => lo === hi ? `${lo} wks` : `${lo}–${hi} wks`;
+// ── Display formatters + unit helpers preserved from the old pricing block ──
+// Pure number -> string / number. No rate-card info. getM2/sqftToM2 are
+// needed by the Calculator's GIA panel-completion validation.
+var fmt = function(n) { return '\u00A3' + Math.round(n).toLocaleString('en-GB'); };
+var fmtR = function(lo, hi) { return fmt(lo) + ' \u2013 ' + fmt(hi); };
+var sqftToM2 = function(v) { return v * 0.0929; };
+var getM2 = function(raw, unit) { return unit === 'sqft' ? sqftToM2(raw) : raw; };
 
-// ── DESIGN COMPONENTS ─────────────────────────────────────────
+// ── UI COMPONENTS ─────────────────────────────────────────────
+function Chip(p) { if (!p.value) return null; return e('span', { style:{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', background:'rgba(0,151,141,0.08)', border:'1px solid rgba(0,151,141,0.18)', borderRadius:4, fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'rgba(0,151,141,0.8)', whiteSpace:'nowrap' }}, p.label ? e('span', { style:{ color:'rgba(255,255,255,0.3)' }}, p.label+' ') : null, p.value); }
 
-const Section = ({
-  title,
-  num,
-  total,
-  visible,
-  children,
-  info,
-  answered,
-  outOf,
-  done
-}) => {
-  const [showInfo, setShowInfo] = React.useState(false);
-  if (!visible) return null;
-  const hasProgress = outOf !== undefined && answered !== undefined;
-  const pct = hasProgress ? answered / outOf : 0;
-  return /*#__PURE__*/React.createElement("section", {
-    "aria-label": title,
-    style: {
-      marginBottom: 28,
-      animation: 'fadeIn 350ms ease both'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "section-header",
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 10,
-      marginBottom: 10,
-      paddingBottom: 10,
-      paddingTop: 8,
-      borderBottom: '1px solid rgba(255,255,255,0.1)',
-      marginLeft: -24,
-      marginRight: -24,
-      paddingLeft: 24,
-      paddingRight: 24
-    }
-  }, hasProgress && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      flexShrink: 0
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      fontWeight: 500,
-      letterSpacing: 1.5,
-      color: done ? 'var(--teal)' : 'rgba(255,255,255,0.25)',
-      textTransform: 'uppercase'
-    }
-  }, answered, "/", outOf), /*#__PURE__*/React.createElement("div", {
-    style: {
-      width: 32,
-      height: 2,
-      background: 'rgba(255,255,255,0.08)',
-      borderRadius: 1,
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: '100%',
-      background: done ? 'var(--teal)' : 'rgba(0,151,141,0.5)',
-      width: `${pct * 100}%`,
-      transition: 'width 300ms ease'
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1,
-      height: '1px',
-      background: 'rgba(255,255,255,0.05)'
-    }
-  }), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: 500,
-      fontSize: 14,
-      color: done ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.7)'
-    }
-  }, title), done && /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 8,
-      letterSpacing: 1.5,
-      color: 'var(--teal)',
-      textTransform: 'uppercase',
-      flexShrink: 0
-    }
-  }, "\u2713"), info && /*#__PURE__*/React.createElement("button", {
-    onClick: () => setShowInfo(v => !v),
-    style: {
-      width: 20,
-      height: 20,
-      borderRadius: '50%',
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: showInfo ? 'rgba(0,151,141,0.2)' : 'rgba(255,255,255,0.04)',
-      color: showInfo ? 'var(--teal)' : 'rgba(255,255,255,0.4)',
-      fontFamily: 'Georgia,serif',
-      fontSize: 11,
-      fontWeight: 700,
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexShrink: 0,
-      transition: 'all 150ms',
-      lineHeight: 1
-    }
-  }, "?")), info && showInfo && /*#__PURE__*/React.createElement("div", {
-    style: {
-      margin: '0 0 14px 0',
-      padding: '12px 14px',
-      background: 'rgba(0,151,141,0.06)',
-      border: '1px solid rgba(0,151,141,0.18)',
-      borderRadius: 4,
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.55)',
-      lineHeight: 1.7
-    }
-  }, info), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 16
-    }
-  }, children));
-};
-const Sel = ({
-  label,
-  value,
-  onPick,
-  options,
-  cols = 2,
-  sub
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginBottom: 16
-  }
-}, /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 500,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: sub ? 4 : 8,
-    letterSpacing: 0.2,
-    textTransform: 'uppercase'
-  }
-}, label), sub && /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.25)',
-    marginBottom: 8,
-    lineHeight: 1.6
-  }
-}, sub), /*#__PURE__*/React.createElement("div", {
-  style: {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${cols},1fr)`,
-    gap: 5
-  }
-}, options.map(o => {
-  const on = value === o.v;
-  return /*#__PURE__*/React.createElement("button", {
-    key: o.v,
-    onClick: () => onPick(o.v),
-    title: o.tooltip || '',
-    style: {
-      padding: '10px 12px',
-      border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-      borderRadius: 4,
-      background: on ? 'rgba(0,151,141,0.14)' : 'rgba(255,255,255,0.03)',
-      color: on ? 'var(--teal)' : 'rgba(255,255,255,0.5)',
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: on ? 500 : 400,
-      fontSize: 12,
-      cursor: 'pointer',
-      textAlign: 'left',
-      lineHeight: 1.35,
-      transition: 'all 150ms ease',
-      boxShadow: on ? '0 0 10px rgba(0,151,141,0.1)' : 'none'
-    }
-  }, o.label, o.small && /*#__PURE__*/React.createElement("span", {
-    style: {
-      display: 'block',
-      fontSize: 10,
-      color: on ? 'rgba(0,151,141,0.7)' : 'rgba(255,255,255,0.22)',
-      marginTop: 2,
-      fontFamily: 'IBM Plex Mono,monospace'
-    }
-  }, o.small));
-})));
-const MultiSel = ({
-  label,
-  sub,
-  values,
-  onToggle,
-  options,
-  cols = 2
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginBottom: 16
-  }
-}, /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 500,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: sub ? 4 : 8,
-    textTransform: 'uppercase'
-  }
-}, label), sub && /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.25)',
-    marginBottom: 8,
-    lineHeight: 1.6
-  }
-}, sub), /*#__PURE__*/React.createElement("div", {
-  style: {
-    display: 'grid',
-    gridTemplateColumns: `repeat(${cols},1fr)`,
-    gap: 5
-  }
-}, options.map(o => {
-  const on = o.v === 'none' ? values.includes('none') : values.includes(o.v);
-  return /*#__PURE__*/React.createElement("button", {
-    key: o.v,
-    onClick: () => onToggle(o.v),
-    style: {
-      padding: '10px 12px',
-      border: `1px solid ${on ? 'var(--teal)' : 'rgba(255,255,255,0.1)'}`,
-      borderRadius: 4,
-      background: on ? 'rgba(0,151,141,0.14)' : 'rgba(255,255,255,0.03)',
-      color: on ? 'var(--teal)' : 'rgba(255,255,255,0.5)',
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: on ? 500 : 400,
-      fontSize: 12,
-      cursor: 'pointer',
-      textAlign: 'left',
-      lineHeight: 1.35,
-      transition: 'all 150ms ease',
-      boxShadow: on ? '0 0 10px rgba(0,151,141,0.1)' : 'none'
-    }
-  }, o.label, o.small && /*#__PURE__*/React.createElement("span", {
-    style: {
-      display: 'block',
-      fontSize: 10,
-      color: on ? 'rgba(0,151,141,0.7)' : 'rgba(255,255,255,0.22)',
-      marginTop: 2,
-      fontFamily: 'IBM Plex Mono,monospace'
-    }
-  }, o.small));
-})));
-const NumInput = ({
-  label,
-  sub,
-  value,
-  onChange,
-  unit,
-  onUnitChange
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginBottom: 16
-  }
-}, /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 500,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: sub ? 4 : 8,
-    textTransform: 'uppercase'
-  }
-}, label), sub && /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.25)',
-    marginBottom: 8,
-    lineHeight: 1.6
-  }
-}, sub), /*#__PURE__*/React.createElement("div", {
-  style: {
-    display: 'flex',
-    gap: 5
-  }
-}, /*#__PURE__*/React.createElement("input", {
-  type: "number",
-  value: value || '',
-  onChange: e => onChange(parseFloat(e.target.value) || 0),
-  placeholder: "0",
-  style: {
-    flex: 1,
-    height: 44,
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 4,
-    padding: '0 14px',
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 18,
-    fontWeight: 500,
-    color: 'var(--white)',
-    background: 'rgba(255,255,255,0.03)',
-    outline: 'none'
-  },
-  onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.4)',
-  onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'
-}), onUnitChange && /*#__PURE__*/React.createElement("div", {
-  style: {
-    display: 'flex',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 4,
-    overflow: 'hidden'
-  }
-}, ['m2', 'sqft'].map(u => /*#__PURE__*/React.createElement("button", {
-  key: u,
-  onClick: () => onUnitChange(u),
-  style: {
-    padding: '0 12px',
-    border: 'none',
-    background: unit === u ? 'rgba(255,255,255,0.08)' : 'transparent',
-    color: unit === u ? 'var(--white)' : 'rgba(255,255,255,0.3)',
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 10,
-    cursor: 'pointer',
-    transition: 'all 150ms',
-    fontWeight: unit === u ? 500 : 400
-  }
-}, u === 'm2' ? 'm²' : 'sq ft')))));
-const Stepper = ({
-  label,
-  sub,
-  value,
-  onChange,
-  min = 0,
-  max = 12
-}) => /*#__PURE__*/React.createElement("div", {
-  style: {
-    marginBottom: 16
-  }
-}, /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 500,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.5)',
-    marginBottom: sub ? 4 : 8,
-    textTransform: 'uppercase'
-  }
-}, label), sub && /*#__PURE__*/React.createElement("div", {
-  style: {
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.25)',
-    marginBottom: 8,
-    lineHeight: 1.6
-  }
-}, sub), /*#__PURE__*/React.createElement("div", {
-  style: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: 4,
-    overflow: 'hidden'
-  }
-}, /*#__PURE__*/React.createElement("button", {
-  onClick: () => onChange(Math.max(min, value - 1)),
-  style: {
-    width: 40,
-    height: 40,
-    border: 'none',
-    borderRight: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.03)',
-    fontSize: 16,
-    cursor: 'pointer',
-    color: 'rgba(255,255,255,0.4)',
-    transition: 'background 150ms'
-  }
-}, "\u2212"), /*#__PURE__*/React.createElement("div", {
-  style: {
-    width: 52,
-    height: 40,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontFamily: 'IBM Plex Mono,monospace',
-    fontSize: 18,
-    fontWeight: 500,
-    color: 'var(--white)',
-    background: 'rgba(255,255,255,0.02)'
-  }
-}, value), /*#__PURE__*/React.createElement("button", {
-  onClick: () => onChange(Math.min(max, value + 1)),
-  style: {
-    width: 40,
-    height: 40,
-    border: 'none',
-    borderLeft: '1px solid rgba(255,255,255,0.08)',
-    background: 'rgba(255,255,255,0.03)',
-    fontSize: 16,
-    cursor: 'pointer',
-    color: 'rgba(255,255,255,0.4)',
-    transition: 'background 150ms'
-  }
-}, "+")));
+function OptBtn(p) { var on = p.selected; return e('button', { onClick:p.onClick, style:{ padding:'12px 14px', border:'1px solid '+(on?'#00978D':'rgba(255,255,255,0.10)'), borderRadius:6, background:on?'rgba(0,151,141,0.10)':'rgba(255,255,255,0.05)', color:on?'#00978D':'rgba(255,255,255,0.55)', fontFamily:"'Space Grotesk',sans-serif", fontWeight:on?500:400, fontSize:12, cursor:'pointer', textAlign:'left', lineHeight:1.35, transition:'all 150ms ease' }}, p.label, p.sub ? e('span', { style:{ display:'block', fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:on?'rgba(0,151,141,0.6)':'rgba(255,255,255,0.22)', marginTop:2 }}, p.sub) : null); }
 
-// ── CONTACT MODAL (MG-SYS-002 §6) ────────────────────────────
-const ContactModal = ({
-  onClose,
-  S,
-  rawEst
-}) => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+function NumField(p) { return e('div', { style:{ marginBottom:16 } }, e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:12, color:'rgba(255,255,255,0.55)', marginBottom:p.sub?3:8 }}, p.label), p.sub ? e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'rgba(255,255,255,0.25)', marginBottom:8, lineHeight:1.6 }}, p.sub) : null, e('div', { style:{ display:'flex', gap:5 } }, e('input', { type:'number', value:p.value||'', onChange:function(ev){ p.onChange(parseFloat(ev.target.value)||0); }, placeholder:'0', style:{ flex:1, height:36, border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, padding:'0 14px', fontFamily:"'IBM Plex Mono',monospace", fontSize:16, fontWeight:500, color:'rgba(255,255,255,0.85)', background:'rgba(255,255,255,0.05)', outline:'none', transition:'all 150ms' }, onFocus:function(ev){ ev.target.style.borderColor='rgba(0,151,141,0.6)'; ev.target.style.background='rgba(0,151,141,0.05)'; }, onBlur:function(ev){ ev.target.style.borderColor='rgba(255,255,255,0.10)'; ev.target.style.background='rgba(255,255,255,0.05)'; } }), p.onUnitChange ? e('div', { style:{ display:'flex', border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, overflow:'hidden' } }, e('button', { key:'m2', onClick:function(){ p.onUnitChange('m2'); }, style:{ padding:'0 10px', border:'none', background:p.unit==='m2'?'rgba(255,255,255,0.08)':'transparent', color:p.unit==='m2'?'#fff':'rgba(255,255,255,0.3)', fontFamily:"'IBM Plex Mono',monospace", fontSize:10, cursor:'pointer' }}, 'm\u00B2'), e('button', { key:'sqft', onClick:function(){ p.onUnitChange('sqft'); }, style:{ padding:'0 10px', border:'none', background:p.unit==='sqft'?'rgba(255,255,255,0.08)':'transparent', color:p.unit==='sqft'?'#fff':'rgba(255,255,255,0.3)', fontFamily:"'IBM Plex Mono',monospace", fontSize:10, cursor:'pointer' }}, 'sq ft')) : null)); }
+
+function Stepper(p) { var mn = p.min != null ? p.min : 0; var mx = p.max != null ? p.max : 12; return e('div', { style:{ marginBottom:16 } }, e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:12, color:'rgba(255,255,255,0.55)', marginBottom:8 }}, p.label), e('div', { style:{ display:'inline-flex', alignItems:'center', border:'1px solid rgba(255,255,255,0.10)', borderRadius:6, overflow:'hidden' } }, e('button', { onClick:function(){ p.onChange(Math.max(mn, p.value-1)); }, style:{ width:34, height:34, border:'none', borderRight:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', fontSize:15, cursor:'pointer', color:'rgba(255,255,255,0.4)' }}, '\u2212'), e('div', { style:{ width:44, height:34, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'IBM Plex Mono',monospace", fontSize:15, fontWeight:500, color:'#fff' }}, p.value), e('button', { onClick:function(){ p.onChange(Math.min(mx, p.value+1)); }, style:{ width:34, height:34, border:'none', borderLeft:'1px solid rgba(255,255,255,0.08)', background:'rgba(255,255,255,0.03)', fontSize:15, cursor:'pointer', color:'rgba(255,255,255,0.4)' }}, '+'))); }
+
+function AccSection(p) { return e('div', { 'data-panel':p.id, style:{ background:p.expanded?'rgba(255,255,255,0.05)':p.done?'rgba(255,255,255,0.02)':'rgba(255,255,255,0.015)', border:'1px solid '+(p.expanded?'rgba(255,255,255,0.12)':p.done?'rgba(0,151,141,0.12)':'rgba(255,255,255,0.06)'), borderRadius:8, marginBottom:6, overflow:'hidden', transition:'all 200ms ease', opacity:p.locked?0.35:1, scrollMarginTop:88 }}, e('button', { onClick:function(){ if(!p.locked) p.onToggle(p.id); }, style:{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 18px', background:'none', border:'none', cursor:p.locked?'default':'pointer', gap:12 }}, e('div', { style:{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 } }, e('div', { style:{ width:8, height:8, borderRadius:'50%', background:p.done?'#00978D':p.expanded?'transparent':'rgba(255,255,255,0.08)', border:p.expanded&&!p.done?'1.5px solid #00978D':'none', flexShrink:0, transition:'all 200ms' }}), e('span', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:14, color:p.done?'rgba(255,255,255,0.85)':p.expanded?'#fff':'rgba(255,255,255,0.5)' }}, p.title), p.done && !p.expanded && p.chips ? e('div', { style:{ display:'flex', gap:5, flexWrap:'wrap', overflow:'hidden', flex:1 } }, p.chips) : null), e('span', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:14, color:'rgba(255,255,255,0.3)', flexShrink:0 }}, p.expanded?'\u2212':'+')), p.expanded ? e('div', { style:{ padding:'4px 18px 20px', animation:'accReveal 200ms ease both' } }, p.children) : null); }
+
+function MultiSel(p) { var vals = p.values || []; return e('div', { style:{ marginBottom:16 } }, p.label ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:12, color:'rgba(255,255,255,0.55)', marginBottom:p.sub?3:8 }}, p.label) : null, p.sub ? e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'rgba(255,255,255,0.25)', marginBottom:8, lineHeight:1.6 }}, p.sub) : null, e('div', { style:{ display:'grid', gridTemplateColumns:'repeat('+(p.cols||2)+',1fr)', gap:5 } }, p.options.map(function(o) { var on = vals.indexOf(o.v) >= 0; return e('button', { key:o.v, onClick:function(){ p.onToggle(o.v); }, style:{ padding:'12px 14px', border:'1px solid '+(on?'#00978D':'rgba(255,255,255,0.10)'), borderRadius:6, background:on?'rgba(0,151,141,0.10)':'rgba(255,255,255,0.05)', color:on?'#00978D':'rgba(255,255,255,0.55)', fontFamily:"'Space Grotesk',sans-serif", fontWeight:on?500:400, fontSize:12, cursor:'pointer', textAlign:'left', lineHeight:1.35, transition:'all 150ms ease' }}, o.l || o.label, o.sub ? e('span', { style:{ display:'block', fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:on?'rgba(0,151,141,0.6)':'rgba(255,255,255,0.22)', marginTop:2 }}, o.sub) : null); }))); }
+
+function SysLabel(p) { return e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.10em', color:'#00978D', textTransform:'uppercase', marginBottom:10, marginTop:p.mt||0 }}, p.text); }
+
+function grid(cols, children) { return e('div', { style:{ display:'grid', gridTemplateColumns:'repeat('+cols+',1fr)', gap:5, marginBottom:16 } }, children); }
+
+// ── CONTACT MODAL ─────────────────────────────────────────────
+function ContactModal(props) {
+  var _n = useState(''); var name = _n[0]; var setName = _n[1];
+  var _e = useState(''); var email = _e[0]; var setEmail = _e[1];
   // CRIT-02 / CRIT-06: GDPR consent checkbox. Submit disabled until ticked.
-  const [consent, setConsent] = useState(false);
-  // phase: 'capture' | 'sending' | 'confirmed' | 'error'
-  const [phase, setPhase] = useState('capture');
-  const [confirmedRef, setConfirmedRef] = useState('');
+  var _c = useState(false); var consent = _c[0]; var setConsent = _c[1];
+  var _p = useState('capture'); var phase = _p[0]; var setPhase = _p[1];
+  var _r = useState(''); var confirmedRef = _r[0]; var setConfirmedRef = _r[1];
   // HIGH-10: focus trap container ref
-  const modalRef = useRef(null);
-
-  const nameValid = name.trim().length > 0;
-  // MED-01: stricter email regex — was email.includes('@') && email.includes('.')
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
-  const formValid = nameValid && emailValid && consent;
-
-  // HIGH-10: focus trap. On Tab from last focusable, cycle to first; on
-  // Shift+Tab from first, cycle to last. ESC closes the modal.
-  useEffect(() => {
-    const node = modalRef.current;
+  var modalRef = useRef(null);
+  var nameValid = name.trim().length > 0;
+  // MED-01: stricter email regex
+  var emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  var formValid = nameValid && emailValid && consent;
+  // HIGH-10: focus trap — Tab cycles, Shift+Tab cycles backwards, ESC closes.
+  useEffect(function() {
+    var node = modalRef.current;
     if (!node) return;
-    const handler = (e) => {
-      if (e.key === 'Escape') { onClose(); return; }
-      if (e.key !== 'Tab') return;
-      const focusable = node.querySelectorAll('input, button, [tabindex="0"]');
+    var handler = function(ev) {
+      if (ev.key === 'Escape') { props.onClose(); return; }
+      if (ev.key !== 'Tab') return;
+      var focusable = node.querySelectorAll('input, button, [tabindex="0"], a[href]');
       if (focusable.length === 0) return;
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
     };
     node.addEventListener('keydown', handler);
-    return () => node.removeEventListener('keydown', handler);
-  }, [onClose]);
-
-  const handleSend = () => {
+    return function() { node.removeEventListener('keydown', handler); };
+  }, [props.onClose]);
+  // Build Calendly prefill URL with the data we have (phone left for manual entry)
+  var buildCalendlyUrl = function(n, em, rf) {
+    var params = [];
+    if (n) params.push('name=' + encodeURIComponent(n));
+    if (em) params.push('email=' + encodeURIComponent(em));
+    if (rf) params.push('a1=' + encodeURIComponent(rf));
+    return 'https://calendly.com/team-myrmexgroup/30min' + (params.length ? '?' + params.join('&') : '');
+  };
+  var calendlyHref = buildCalendlyUrl(name.trim(), email.trim(), confirmedRef);
+  var handleSend = function() {
     if (!formValid || phase !== 'capture') return;
-    if (!rawEst) return;
-    // HIGH-02: client no longer sends est. Server computes it from state via pricing.js.
-    // Ref is generated server-side; we don't have it client-side anymore, so let the
-    // backend assign one (the response includes it).
-    const ref = (rawEst && rawEst.breakdown && rawEst.breakdown.ref) || ('MG-LOCAL' + Date.now().toString(36).toUpperCase().slice(-2));
-    const payload = {
+    if (!props.rawEst) return;
+    // MG-SYS-003: HIGH-02 — client no longer sends est. Server recomputes from state.
+    // Generate a ref locally (calcDetailedBreakdown no longer exists client-side).
+    var ref = 'MG-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    var payload = {
       type: 'quote-email',
-      ref,
+      ref: ref,
       name: name.trim(),
       email: email.trim(),
-      state: S,
+      state: props.S,
       calculatorVersion: CALCULATOR_VERSION
     };
     setPhase('sending');
-    fetch(`${API_BASE}/submit`, {
+    fetch(API_BASE + '/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'omit',
       body: JSON.stringify(payload)
     })
-      .then(r => r.json())
-      .then(({ ref: returnedRef, status }) => {
-        if (status === 'sent') {
-          setConfirmedRef(returnedRef || ref);
-          setPhase('confirmed');
-        } else {
-          setPhase('error');
-        }
-      })
-      .catch(() => setPhase('error'));
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'sent') {
+        setConfirmedRef(data.ref || ref);
+        setPhase('confirmed');
+        if (props.onSent) props.onSent(props.rawEst && props.rawEst.mid, { name: name.trim(), email: email.trim(), ref: data.ref || ref });
+      } else {
+        setPhase('error');
+      }
+    })
+    .catch(function() { setPhase('error'); });
   };
-
-  const inputStyle = {
-    width: '100%',
-    height: 48,
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: 4,
-    padding: '0 16px',
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 400,
-    fontSize: 15,
-    color: 'var(--white)',
-    background: 'rgba(255,255,255,0.04)',
-    outline: 'none',
-    boxSizing: 'border-box'
-  };
-  const labelStyle = {
-    fontFamily: 'Space Grotesk,sans-serif',
-    fontWeight: 500,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.4)',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-    display: 'block'
-  };
-
-  return /*#__PURE__*/React.createElement("div", {
-    className: "modal-overlay",
-    role: "dialog",
-    "aria-modal": "true",
-    "aria-label": "Full breakdown report",
-    ref: modalRef,
-    onClick: e => {
-      if (e.target === e.currentTarget) onClose();
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "modal-card"
-  },
-
-    /* ── header bar ── */
-    /*#__PURE__*/React.createElement("div", {
-      style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }
-    },
-      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 6 } },
-        [0,1,2].map(i => /*#__PURE__*/React.createElement("span", {
-          key: i,
-          style: { width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }
-        }))
+  var inputStyle = { width:'100%', height:48, border:'1px solid rgba(255,255,255,0.12)', borderRadius:4, padding:'0 16px', fontFamily:"'Space Grotesk',sans-serif", fontWeight:400, fontSize:15, color:'#fff', background:'rgba(255,255,255,0.04)', outline:'none', boxSizing:'border-box' };
+  var labelStyle = { fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:11, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:1, marginBottom:8, display:'block' };
+  return e('div', { className:'modal-overlay', role:'dialog', 'aria-modal':'true', 'aria-label':'Full breakdown report', ref:modalRef, onClick:function(ev){ if(ev.target===ev.currentTarget) props.onClose(); } },
+    e('div', { className:'modal-card' },
+      e('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:28 } },
+        e('div', { style:{ display:'flex', gap:6 } }, [0,1,2].map(function(i){ return e('span', { key:i, style:{ width:7, height:7, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}); })),
+        e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:2, color:'rgba(255,255,255,0.2)', textTransform:'uppercase' }}, 'MG-REPORT'),
+        e('button', { onClick:props.onClose, style:{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:18, lineHeight:1 }}, '\u00D7')
       ),
-      /*#__PURE__*/React.createElement("span", {
-        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }
-      }, "MG-REPORT"),
-      /*#__PURE__*/React.createElement("button", {
-            onClick: onClose,
-            style: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }
-          }, "\xD7")
-    ),
+      phase === 'capture' ? e(React.Fragment, null,
+        e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:2.5, color:'#00978D', textTransform:'uppercase', marginBottom:16 }}, 'Full Breakdown Report'),
+        e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:20, color:'#fff', lineHeight:1.3, marginBottom:8 }}, 'Get the complete cost breakdown.'),
+        e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:400, fontSize:14, color:'rgba(255,255,255,0.4)', lineHeight:1.7, marginBottom:28 }}, 'Every line item. Programme timeline. Procurement flags. What the number means and what drives it \u2014 sent to your inbox.'),
+        e('div', { style:{ marginBottom:16 } }, e('label', { style:labelStyle }, 'First name'), e('input', { type:'text', placeholder:'Your first name', value:name, onChange:function(ev){setName(ev.target.value);}, style:inputStyle, onFocus:function(ev){ev.target.style.borderColor='rgba(0,151,141,0.5)';}, onBlur:function(ev){ev.target.style.borderColor='rgba(255,255,255,0.12)';}, autoFocus:true })),
+        // CRIT-02 / CRIT-06 — processor disclosure (above email input)
+        e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:'rgba(255,255,255,0.4)', lineHeight:1.6, marginBottom:16 } },
+          "We'll use your details to send this breakdown and follow up about your project. Your data is processed by Make (automation), Google Sheets (storage, up to 3 months), and Resend (email). See our ",
+          e('a', { href:'/privacy', target:'_blank', rel:'noopener', style:{ color:'rgba(0,151,141,0.7)', textDecoration:'underline' }}, 'privacy policy'),
+          '.'
+        ),
+        e('div', { style:{ marginBottom:16 } }, e('label', { style:labelStyle }, 'Email address'), e('input', { id:'mg-modal-email', type:'email', placeholder:'your@email.com', value:email, onChange:function(ev){setEmail(ev.target.value);}, onKeyDown:function(ev){ if(ev.key==='Enter') handleSend(); }, style:inputStyle, onFocus:function(ev){ev.target.style.borderColor='rgba(0,151,141,0.5)';}, onBlur:function(ev){ev.target.style.borderColor='rgba(255,255,255,0.12)';} })),
+        // CRIT-02 / CRIT-06 — consent checkbox (above submit button)
+        e('label', { style:{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:20, cursor:'pointer', fontFamily:"'Space Grotesk',sans-serif", fontSize:13, color:'rgba(255,255,255,0.55)', lineHeight:1.5 } },
+          e('input', { type:'checkbox', checked:consent, onChange:function(ev){ setConsent(ev.target.checked); }, style:{ marginTop:3, accentColor:'#00978D', width:16, height:16, flexShrink:0 }}),
+          e('span', null, 'I agree to Myrmex Group processing my details to send the breakdown and contact me about this enquiry.')
+        ),
+        e('button', { onClick:handleSend,
+          onMouseOver:function(ev){ if(formValid) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+          onMouseOut:function(ev){ if(formValid) { ev.target.style.background='#EB5324'; ev.target.style.borderColor='#EB5324'; } },
+          onMouseDown:function(ev){ if(formValid) { ev.target.style.background='#A83A1A'; ev.target.style.borderColor='#A83A1A'; } },
+          onMouseUp:function(ev){ if(formValid) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+          style:{ width:'100%', padding:'13px 0', background:formValid?'#EB5324':'rgba(255,255,255,0.04)', border:'1px solid '+(formValid?'#EB5324':'rgba(255,255,255,0.07)'), borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:formValid?'#fff':'rgba(255,255,255,0.18)', cursor:formValid?'pointer':'default', letterSpacing:0.8, textTransform:'uppercase', transition:'all 150ms' }}, 'SEND IT'),
+        e('div', { style:{ textAlign:'center', marginTop:16 } }, e('span', { onClick:props.onClose, style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', cursor:'pointer', textDecoration:'underline' }}, 'Back to calculator'))
+      ) : null,
+      phase === 'sending' ? e('div', { style:{ textAlign:'center', padding:'32px 0' } }, e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:2.5, color:'#00978D', textTransform:'uppercase', marginBottom:20 }}, 'Sending'), e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:24, color:'rgba(0,151,141,0.5)', marginBottom:12, letterSpacing:4 }}, '\u22EF'), e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.35)' }}, 'Compiling your breakdown\u2026')) : null,
+      phase === 'confirmed' ? e('div', { style:{ textAlign:'center', padding:'24px 0' } }, e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:2.5, color:'#00978D', textTransform:'uppercase', marginBottom:20 }}, 'Confirmed'), e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:500, fontSize:18, color:'#fff', marginBottom:12, lineHeight:1.3 }}, 'Your breakdown is on its way.'), e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.4)', lineHeight:1.6, marginBottom:28 }}, 'If the number works, the next move is a conversation.'), e('a', { href:'/start',
+              onMouseOver:function(ev){ ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; },
+              onMouseOut:function(ev){ ev.target.style.background='#EB5324'; ev.target.style.borderColor='#EB5324'; },
+              onMouseDown:function(ev){ ev.target.style.background='#A83A1A'; ev.target.style.borderColor='#A83A1A'; },
+              onMouseUp:function(ev){ ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; },
+              style:{ display:'block', width:'100%', padding:'13px 0', background:'#EB5324', border:'1px solid #EB5324', borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#fff', cursor:'pointer', letterSpacing:1, textTransform:'uppercase', textAlign:'center', textDecoration:'none', marginBottom:12, transition:'all 150ms ease', boxSizing:'border-box' }}, "LET\u2019S DO IT"),
+            e('a', { href:calendlyHref,target:'_blank',rel:'noopener noreferrer',
+              onMouseOver:function(ev){ ev.target.style.borderColor='#00978D'; ev.target.style.color='#00978D'; },
+              onMouseOut:function(ev){ ev.target.style.borderColor='rgba(255,255,255,0.35)'; ev.target.style.color='#fff'; },
+              onMouseDown:function(ev){ ev.target.style.borderColor='rgba(0,151,141,0.5)'; ev.target.style.color='rgba(0,151,141,0.8)'; },
+              onMouseUp:function(ev){ ev.target.style.borderColor='#00978D'; ev.target.style.color='#00978D'; },
+              style:{ display:'block', width:'100%', padding:'13px 0', background:'transparent', border:'1px solid rgba(255,255,255,0.35)', borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#fff', cursor:'pointer', letterSpacing:1, textTransform:'uppercase', textAlign:'center', textDecoration:'none', transition:'all 150ms ease', boxSizing:'border-box' }}, 'BOOK A CALL')) : null,
+      phase === 'error' ? e(React.Fragment, null, e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:2.5, color:'#EB5324', textTransform:'uppercase', marginBottom:16 }}, 'Submission failed'), e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:400, fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.7, marginBottom:28 }}, 'Something went wrong. Please email team@myrmexgroup.co.uk directly.'), e('button', { onClick:function(){setPhase('capture');}, style:{ width:'100%', padding:'13px 0', background:'#EB5324', border:'1px solid #EB5324', borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#fff', cursor:'pointer', letterSpacing:0.8, textTransform:'uppercase' }}, 'Try again')) : null));
+}
 
-    /* ── STATE A: CAPTURE ── */
-    phase === 'capture' && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 16 }
-      }, "Full Breakdown Report"),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 500, fontSize: 20, color: 'var(--white)', lineHeight: 1.3, marginBottom: 8 }
-      }, "Get the complete cost breakdown."),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 400, fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.7, marginBottom: 28 }
-      }, "Every line item. Programme timeline. Procurement flags. What the number means and what drives it \u2014 sent to your inbox."),
-
-      /* first name */
-      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 16 } },
-        /*#__PURE__*/React.createElement("label", { style: labelStyle }, "First name"),
-        /*#__PURE__*/React.createElement("input", {
-          type: "text",
-          placeholder: "Your first name",
-          value: name,
-          onChange: e => setName(e.target.value),
-          onKeyDown: e => e.key === 'Enter' && document.getElementById('mg-modal-email') && document.getElementById('mg-modal-email').focus(),
-          style: inputStyle,
-          onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.5)',
-          onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.12)',
-          autoFocus: true
-        })
-      ),
-
-      /* CRIT-02 / CRIT-06 — processor disclosure (above email input) */
-      /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontFamily: 'IBM Plex Mono,monospace',
-          fontSize: 11,
-          color: 'rgba(255,255,255,0.4)',
-          lineHeight: 1.6,
-          marginBottom: 16
-        }
-      },
-        "We'll use your details to send this breakdown and follow up about your project. ",
-        "Your data is processed by Make (automation), Google Sheets (storage, up to 3 months), ",
-        "and Resend (email). See our ",
-        /*#__PURE__*/React.createElement("a", {
-          href: "/privacy",
-          target: "_blank",
-          rel: "noopener",
-          style: { color: 'rgba(0,151,141,0.7)', textDecoration: 'underline' }
-        }, "privacy policy"),
-        "."
-      ),
-
-      /* email */
-      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 16 } },
-        /*#__PURE__*/React.createElement("label", { style: labelStyle }, "Email address"),
-        /*#__PURE__*/React.createElement("input", {
-          id: "mg-modal-email",
-          type: "email",
-          placeholder: "your@email.com",
-          value: email,
-          onChange: e => setEmail(e.target.value),
-          onKeyDown: e => e.key === 'Enter' && handleSend(),
-          style: inputStyle,
-          onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.5)',
-          onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.12)'
-        })
-      ),
-
-      /* CRIT-02 / CRIT-06 — consent checkbox (above submit) */
-      /*#__PURE__*/React.createElement("label", {
-        style: {
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: 10,
-          marginBottom: 20,
-          cursor: 'pointer',
-          fontFamily: 'Space Grotesk,sans-serif',
-          fontSize: 13,
-          color: 'rgba(255,255,255,0.55)',
-          lineHeight: 1.5
-        }
-      },
-        /*#__PURE__*/React.createElement("input", {
-          type: "checkbox",
-          checked: consent,
-          onChange: e => setConsent(e.target.checked),
-          style: { marginTop: 3, accentColor: '#00978D', width: 16, height: 16, flexShrink: 0 }
-        }),
-        /*#__PURE__*/React.createElement("span", null,
-          "I agree to Myrmex Group processing my details to send the breakdown and contact me about this enquiry."
-        )
-      ),
-
-      /* SEND IT button */
-      /*#__PURE__*/React.createElement("button", {
-        onClick: handleSend,
-        style: {
-          width: '100%',
-          padding: '13px 0',
-          background: formValid ? 'var(--orange)' : 'rgba(255,255,255,0.04)',
-          border: `1px solid ${formValid ? 'var(--orange)' : 'rgba(255,255,255,0.07)'}`,
-          borderRadius: 4,
-          fontFamily: 'Space Grotesk,sans-serif',
-          fontWeight: 600,
-          fontSize: 13,
-          color: formValid ? 'var(--white)' : 'rgba(255,255,255,0.18)',
-          cursor: formValid ? 'pointer' : 'default',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
-          transition: 'all 150ms'
-        },
-        onMouseEnter: e => { if (formValid) e.target.style.background = '#C94420'; },
-        onMouseLeave: e => { if (formValid) e.target.style.background = formValid ? 'var(--orange)' : 'rgba(255,255,255,0.04)'; }
-      }, "SEND IT"),
-
-      /* back / dismiss link */
-      /*#__PURE__*/React.createElement("div", { style: { textAlign: 'center', marginTop: 16 } },
-        /*#__PURE__*/React.createElement("span", {
-          onClick: onClose,
-          style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 12, color: 'rgba(255,255,255,0.25)', cursor: 'pointer', textDecoration: 'underline' }
-        }, "Back to calculator")
-      )
-    ),
-
-    /* ── SENDING ── */
-    phase === 'sending' && /*#__PURE__*/React.createElement("div", {
-      style: { textAlign: 'center', padding: '32px 0' }
-    },
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 20 }
-      }, "Sending"),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 24, color: 'rgba(0,151,141,0.5)', marginBottom: 12, letterSpacing: 4 }
-      }, "\u22EF"),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.35)' }
-      }, "Compiling your breakdown\u2026")
-    ),
-
-    /* ── STATE B: CONFIRMATION — inline CTAs ── */
-    phase === 'confirmed' && /*#__PURE__*/React.createElement("div", {
-      style: { textAlign: 'center', padding: '24px 0' }
-    },
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 20 }
-      }, "Confirmed"),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 500, fontSize: 18, color: 'var(--white)', marginBottom: 12, lineHeight: 1.3 }
-      }, "Your breakdown is on its way."),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 28 }
-      }, "If the number works, the next move is a conversation."),
-      /*#__PURE__*/React.createElement("a", {
-        href: '/START/index.html',
-        style: {
-          display: 'block', width: '100%', padding: '13px 0', background: 'var(--orange)',
-          border: '1px solid var(--orange)', borderRadius: 4,
-          fontFamily: 'Space Grotesk,sans-serif', fontWeight: 600, fontSize: 13,
-          color: 'var(--white)', cursor: 'pointer', letterSpacing: 1,
-          textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none',
-          transition: 'all 150ms', marginBottom: 12
-        }
-      }, "LET\u2019S DO IT"),
-      /*#__PURE__*/React.createElement("a", {
-        href: '#calendly',
-        style: {
-          display: 'block', width: '100%', padding: '13px 0', background: 'transparent',
-          border: '1px solid rgba(255,255,255,0.35)', borderRadius: 4,
-          fontFamily: 'Space Grotesk,sans-serif', fontWeight: 600, fontSize: 13,
-          color: 'var(--white)', cursor: 'pointer', letterSpacing: 1,
-          textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none',
-          transition: 'all 150ms'
-        }
-      }, "BOOK A CALL")
-    ),
-
-    /* ── ERROR ── */
-    phase === 'error' && /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: '#EB5324', textTransform: 'uppercase', marginBottom: 16 }
-      }, "Submission failed"),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 400, fontSize: 14, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 28 }
-      }, "Something went wrong sending your breakdown. Please email us directly at team@myrmexgroup.co.uk and we\u2019ll come back to you within 24 hours."),
-      /*#__PURE__*/React.createElement("button", {
-        onClick: () => setPhase('capture'),
-        style: {
-          width: '100%',
-          padding: '13px 0',
-          background: 'var(--orange)',
-          border: '1px solid var(--orange)',
-          borderRadius: 4,
-          fontFamily: 'Space Grotesk,sans-serif',
-          fontWeight: 600,
-          fontSize: 13,
-          color: 'var(--white)',
-          cursor: 'pointer',
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
-          transition: 'all 150ms'
-        }
-      }, "Try again")
-    )
-
-  ));
-};
-
-// ── MAIN ─────────────────────────────────────────────────────
+// ── MAIN CALCULATOR ───────────────────────────────────────────
 function Calculator() {
-  const [S, setS] = useState({
-    propertyType: null,
-    tenure: null,
-    listed: null,
-    buildingAge: null,
-    arrangement: null,
-    zone: null,
-    giaRaw: 0,
-    giaUnit: 'm2',
-    bedrooms: 0,
-    floors: 0,
-    ceilingHeight: null,
-    access: null,
-    gfLayout: null,
-    roomsLargestFloor: 0,
-    condition: null,
-    handover: null,
-    lastRefurb: null,
-    scope: null,
-    partialAreas: [],
-    demo: null,
-    demoRooms: 0,
-    periodFeatures: null,
-    windowTypes: [],
-    replaceCount: 0,
-    newOpenings: 0,
-    sashCount: 0,
-    doors: null,
-    rooflights: null,
-    electrical: null,
-    elecFinish: null,
-    plumbing: null,
-    boiler: null,
-    ufhZone: null,
-    ventilation: null,
-    smart: null,
-    replaceRads: null,
-    radTier: null,
-    radCount: 0,
-    kitchenScope: null,
-    kitTier: null,
-    kitSize: null,
-    appliances: null,
-    bathrooms: 0,
-    bathTier: null,
-    freestandingBath: null,
-    cloakrooms: 0,
-    bespokeFurniture: null,
-    furnitureLM: 0,
-    furnitureHeight: null,
-    furnitureTier: null,
-    flooring: null,
-    decoration: null,
-    skirtings: null,
-    structural: [],
-    structuralAnswered: false,
-    loftRaw: 0,
-    loftUnit: 'm2',
-    extRaw: 0,
-    extUnit: 'm2',
-    storeys: null,
-    basRaw: 0,
-    basUnit: 'm2',
-    basType: null,
-    external: [],
-    gardenSize: null,
-    programme: null,
-    targetDate: '',
-    purpose: null
-  });
-  const [showModal, setShowModal] = useState(false);
-  const [showResult, setShowResult] = useState(false);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const calcTimerRef = useRef(null);
-  const set = useCallback((k, v) => setS(p => ({
-    ...p,
-    [k]: v
-  })), []);
-  const pick = useCallback(k => v => set(k, v), [set]);
-  const toggleStruct = useCallback(v => {
-    setS(p => {
-      if (v === 'none') return {
-        ...p,
-        structural: ['none'],
-        structuralAnswered: true
-      };
-      let arr = p.structural.filter(x => x !== 'none');
-      if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
-      return {
-        ...p,
-        structural: arr,
-        structuralAnswered: true
-      };
-    });
-  }, []);
-  const toggleExt = useCallback(v => {
-    setS(p => {
-      if (v === 'none') return {
-        ...p,
-        external: ['none'],
-        gardenSize: null
-      };
-      let arr = p.external.filter(x => x !== 'none');
-      if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
-      return {
-        ...p,
-        external: arr
-      };
-    });
-  }, []);
-  const togglePartialAreas = useCallback(v => {
-    setS(p => {
-      let arr = p.partialAreas.filter(x => x !== v);
-      if (!p.partialAreas.includes(v)) arr.push(v);
-      return {
-        ...p,
-        partialAreas: arr
-      };
-    });
-  }, []);
-  // Phase 4: server-side estimate via /api/estimate.
-  // One-shot fetch: fires only when all 16 sections are complete (see the
-  // useEffect below `allDone`). Pre-completion, the estimate panel shows the
-  // "——" placeholder. Post-completion changes re-fetch once (no debounce).
-  const [est, setEst] = useState(null);
-  const [estLoading, setEstLoading] = useState(false);
-  const [estError, setEstError] = useState(null);
-  const TOTAL = 16;
-  const isFlat = ['period-flat', 'newbuild-flat'].includes(S.propertyType);
-  const isHouse = ['period-house', 'newbuild-house'].includes(S.propertyType);
-  // Auto-derive arrangement when property type implies it
-  const effectiveArrangement = isFlat ? 'flat' : S.arrangement;
-  const giaM2 = S.giaUnit === 'sqft' ? S.giaRaw * 0.0929 : S.giaRaw;
-  const giaValid = giaM2 >= 25;
-  const s1Done = S.propertyType && S.tenure && S.listed && S.buildingAge && effectiveArrangement && S.zone && giaValid && S.bedrooms > 0 && S.floors > 0 && S.ceilingHeight && S.access && S.gfLayout && S.roomsLargestFloor > 0;
-  const s2Done = !s1Done ? false : !!(S.handover && S.lastRefurb);
-  const s3Done = !s2Done ? false : !!(S.scope && S.demo && (S.scope !== 'partial' || S.partialAreas.length > 0));
-  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
-  const s4Done = !s3Done ? false : isPeriod ? S.periodFeatures !== null : true;
-  const s5Done = !(s3Done && s4Done) ? false : S.windowTypes !== null && S.doors !== null && S.rooflights !== null;
-  const s6Done = !s5Done ? false : S.electrical !== null && (S.electrical === 'none' || S.elecFinish !== null);
-  const s7Done = !s6Done ? false : S.plumbing !== null;
-  const s8Done = !s7Done ? false : S.boiler !== null && S.ufhZone !== null && S.ventilation !== null && S.smart !== null && S.replaceRads !== null && (S.replaceRads === 'no' || S.radTier !== null && S.radCount > 0);
-  const kitActive = S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout';
-  const s9Done = !s8Done ? false : S.kitchenScope !== null && (!kitActive || S.kitTier && S.kitSize && S.appliances);
-  const s10Done = !s9Done ? false : (S.bathrooms > 0 ? S.bathTier !== null : true) && S.freestandingBath !== null;
-  const s11Done = !s10Done ? false : S.bespokeFurniture !== null && (S.bespokeFurniture === 'no' || S.furnitureLM > 0 && S.furnitureHeight && S.furnitureTier);
-  const s12Done = !s11Done ? false : S.flooring !== null && S.decoration !== null && S.skirtings !== null;
-  const s13Done = !s12Done ? false : S.structuralAnswered === true;
-  const gardenSelected = S.external.includes('garden');
-  const s14Done = !s12Done ? false : S.external.length > 0 && (!gardenSelected || S.gardenSize !== null);
-  const s15Done = !s12Done ? false : S.programme !== null;
-  const s16Done = !s15Done ? false : S.purpose !== null;
-  const allDone = !!(s1Done && s2Done && s3Done && s4Done && s5Done && s6Done && s7Done && s8Done && s9Done && s10Done && s11Done && s12Done && s13Done && s14Done && s15Done && s16Done);
-  const ready = est && allDone && (S.programme !== 'target' || S.targetDate);
-
-  // One-shot /api/estimate fetch: fires only when all 16 sections are complete.
-  // Pre-completion: panel shows "——" placeholder, no network activity.
-  // Post-completion state changes re-fetch (dependency sKey), no debounce —
-  // a real user triggers 1-2 requests per session at most.
-  // If sections become incomplete again (user un-answers a field), clear est
-  // so stale figures don't leak into the sidebar.
-  const sKey = JSON.stringify(S);
-  useEffect(() => {
-    if (allDone) {
-      fetchEstimate(S, setEst, setEstLoading, setEstError);
-    } else {
+  var _exp = useState('project-basics'); var expanded = _exp[0]; var setExpanded = _exp[1];
+  var _rev = useState(false); var estimateRevealed = _rev[0]; var setEstimateRevealed = _rev[1];
+  var _spn = useState(false); var showSpinner = _spn[0]; var setShowSpinner = _spn[1];
+  var _mod = useState(false); var showModal = _mod[0]; var setShowModal = _mod[1];
+  var _sent = useState(null); var sentEstMid = _sent[0]; var setSentEstMid = _sent[1];
+  var _lead = useState(null); var leadData = _lead[0]; var setLeadData = _lead[1];
+  var _S = useState({ propertyType:null, tenure:null, listed:null, buildingAge:null, arrangement:null, zone:null, giaRaw:0, giaUnit:'m2', bedrooms:1, floors:1, ceilingHeight:null, access:null, gfLayout:null, roomsLargestFloor:0, handover:null, lastRefurb:null, scope:null, partialAreas:[], demo:null, demoRooms:0, periodFeatures:null, windowTypes:[], replaceCount:0, newOpenings:0, sashCount:0, doors:null, rooflights:null, electrical:null, elecFinish:null, plumbing:null, boiler:null, ufhZone:null, ventilation:null, smart:null, replaceRads:null, radCount:0, radTier:null, kitchenScope:null, kitTier:null, kitSize:null, appliances:null, bathrooms:1, bathTier:null, freestandingBath:null, cloakrooms:0, bespokeFurniture:null, furnitureLM:0, furnitureHeight:null, furnitureTier:null, flooring:null, decoration:null, skirtings:null, structural:[], loftRaw:0, loftUnit:'m2', extRaw:0, extUnit:'m2', storeys:null, basRaw:0, basUnit:'m2', basType:null, external:[], gardenSize:null, programme:null, targetDate:'', purpose:null });
+  var S = _S[0]; var setS = _S[1];
+  var set = useCallback(function(k, v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; n[k] = v; return n; }); }, []);
+  var setMulti = useCallback(function(k, v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; var arr = (n[k] || []).slice(); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx, 1); else arr.push(v); n[k] = arr; return n; }); }, []);
+  var toggleStruct = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.structural = ['none']; return n; } var arr = (n.structural || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.structural = arr; return n; }); }, []);
+  var toggleExt = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.external = ['none']; n.gardenSize = null; return n; } var arr = (n.external || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.external = arr; return n; }); }, []);
+  useEffect(function() { if (S.propertyType === 'period-flat' || S.propertyType === 'newbuild-flat') set('arrangement', 'flat'); }, [S.propertyType]);
+  // MG-SYS-003: server-side estimate via /api/estimate. Replaces the
+  // client-side useMemo(recalc). One-shot fetch fires only when allDone
+  // becomes true (see useEffect below panel-completion flags).
+  var _est = useState(null); var est = _est[0]; var setEst = _est[1];
+  var _estErr = useState(null); var estError = _estErr[0]; var setEstError = _estErr[1];
+  var toggle = function(id) {
+    setExpanded(function(x) { return x === id ? null : id; });
+    // Scroll the opened section to the top of the viewport after React re-renders
+    setTimeout(function() {
+      var el = document.querySelector('[data-panel="' + id + '"]');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 60);
+  };
+  var isPeriod = ['period-house','period-flat'].indexOf(S.propertyType) >= 0;
+  var isFlat = ['period-flat','newbuild-flat'].indexOf(S.propertyType) >= 0;
+  // GIA validation — minimum 25m² (same as original calculator)
+  var giaM2 = getM2(S.giaRaw, S.giaUnit);
+  var giaValid = giaM2 >= 25;
+  // Panel completion
+  var pA = S.propertyType && S.tenure && S.listed && S.buildingAge && (isFlat || S.arrangement) && S.zone && giaValid;
+  var pB = pA && S.bedrooms > 0 && S.floors > 0 && S.ceilingHeight && S.access && S.gfLayout && S.roomsLargestFloor > 0;
+  var pC = pB && S.handover && S.lastRefurb;
+  var pD = pC && S.scope && (S.scope !== 'partial' || S.partialAreas.length > 0) && S.demo;
+  var pE = pD && (!isPeriod || S.periodFeatures) && S.windowTypes !== null && S.doors !== null && S.rooflights !== null;
+  var pF = pE && S.electrical && (S.electrical === 'none' || S.elecFinish) && S.plumbing;
+  var pG = pF && S.boiler && S.ufhZone && S.ventilation && S.smart && S.replaceRads !== null && (S.replaceRads !== 'yes' || (S.radTier !== null && S.radCount > 0));
+  var pH = pG && S.kitchenScope && (S.kitchenScope === 'keep' || S.kitchenScope === 'none' || (S.kitTier && S.kitSize && S.appliances));
+  var pI = pH && (S.bathrooms > 0 ? !!S.bathTier : true) && S.freestandingBath !== null && S.bespokeFurniture !== null && (S.bespokeFurniture !== 'yes' || (S.furnitureLM > 0 && S.furnitureHeight && S.furnitureTier));
+  var pJ = pI && S.flooring && S.decoration && S.skirtings;
+  var pK = pJ && S.structural.length > 0;
+  var pL = pK && S.external.length > 0 && (S.external.indexOf('garden') < 0 || S.gardenSize) && S.programme && S.purpose;
+  var allDone = !!pL;
+  var doneCount = [pA,pB,pC,pD,pE,pF,pG,pH,pI,pJ,pK,pL].filter(Boolean).length;
+  // MG-SYS-003: when all 12 panels complete, fire one /api/estimate request
+  // and reveal the result when it arrives. Spinner shows during the fetch.
+  useEffect(function() {
+    if (allDone && !estimateRevealed) {
+      setShowSpinner(true);
+      setEstError(null);
+      fetchEstimate(S, function(result) {
+        setEst(result);
+        setShowSpinner(false);
+        setEstimateRevealed(true);
+      }, function(errMsg) {
+        setEstError(errMsg);
+        setShowSpinner(false);
+      });
+    }
+  }, [allDone]);
+  // Re-hide when user un-answers a panel after seeing the estimate.
+  useEffect(function() {
+    if (!allDone && estimateRevealed) {
+      setEstimateRevealed(false);
+      setShowSpinner(false);
       setEst(null);
       setEstError(null);
-      setEstLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDone, sKey]);
+  }, [allDone]);
+  var typeL = {'period-house':'Period house','period-flat':'Period flat','newbuild-house':'New-build house','newbuild-flat':'New-build flat'};
+  var zoneL = {z1:'Zone 1',z2:'Zone 2',z3:'Zone 3','z4-6':'Zone 4\u20136'};
 
-  // Field-level progress — each answered field counts, gives immediate feedback
-  // Section-completion progress
-  let progress = 0;
-  [s1Done, s2Done, s3Done, s4Done, s5Done, s6Done, s7Done, s8Done, s9Done, s10Done, s11Done, s12Done, s13Done, s14Done, s15Done, s16Done].forEach(d => {
-    if (d) progress++;
-  });
+  return e('div', { style:{ background:'linear-gradient(180deg,#0E0E16,#08080E)', padding:'0 0 96px' } },
+    showModal ? e(ContactModal, { onClose:function(){ setShowModal(false); var z3 = document.getElementById('how-much-z3-cta'); if(z3) z3.scrollIntoView({behavior:'smooth'}); }, S:S, rawEst:est, onSent:function(mid, lead){ setSentEstMid(mid); setLeadData(lead); var z3btn = document.querySelector('.z3-btn-secondary'); if (z3btn && lead) { var params = []; if(lead.name) params.push('name='+encodeURIComponent(lead.name)); if(lead.email) params.push('email='+encodeURIComponent(lead.email)); if(lead.ref) params.push('a1='+encodeURIComponent(lead.ref)); z3btn.href = 'https://calendly.com/team-myrmexgroup/30min' + (params.length?'?'+params.join('&'):''); } } }) : null,
+    // Two-column layout: accordion left, estimate card right
+    e('div', { className:'calc-layout' },
+      // LEFT COLUMN — accordion form
+      e('div', { style:{ minWidth:0 } },
+      // App-window bar
+      e('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 16px', background:'rgba(255,255,255,0.04)', borderRadius:'12px 12px 0 0', borderBottom:'1px solid rgba(255,255,255,0.08)' } },
+        e('div', { style:{ display:'flex', gap:5 } }, [0,1,2].map(function(i){ return e('span', { key:i, style:{ width:7, height:7, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}); })),
+        e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.25)', textTransform:'uppercase' }}, 'MYX-QS-2026 \u00B7 Estimate form'),
+        e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'#00978D', textTransform:'uppercase' }}, doneCount + ' / 12')),
+      // Accordion
+      e('div', { style:{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.08)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'12px 12px' } },
+        // A: Project basics
+        e(AccSection, { id:'project-basics', title:'Project basics', expanded:expanded==='project-basics', locked:false, done:!!pA, onToggle:toggle, chips:pA?[e(Chip,{key:'t',value:typeL[S.propertyType]}),e(Chip,{key:'z',value:zoneL[S.zone]}),e(Chip,{key:'g',value:S.giaRaw+'m\u00B2'})]:null },
+          grid(2,[{v:'period-house',l:'Period house'},{v:'period-flat',l:'Period flat'},{v:'newbuild-house',l:'New-build house'},{v:'newbuild-flat',l:'New-build flat'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.propertyType===t.v,onClick:function(){set('propertyType',t.v);}});})),
+          grid(2,[{v:'freehold',l:'Freehold'},{v:'leasehold',l:'Leasehold',sub:'Triggers Licence to Alter'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.tenure===t.v,onClick:function(){set('tenure',t.v);}});})),
+          grid(2,[{v:'none',l:'Not listed'},{v:'grade2',l:'Grade II',sub:'+8%'},{v:'grade2star',l:'Grade II*',sub:'+10%'},{v:'grade1',l:'Grade I',sub:'+12%'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.listed===t.v,onClick:function(){set('listed',t.v);}});})),
+          grid(2,[{v:'pre1900',l:'Pre-1900',sub:'+12%'},{v:'1900-1960',l:'1900\u20131960',sub:'+7%'},{v:'1960-2000',l:'1960\u20132000',sub:'+3%'},{v:'post2000',l:'Post-2000',sub:'Baseline'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.buildingAge===t.v,onClick:function(){set('buildingAge',t.v);}});})),
+          !isFlat?grid(2,[{v:'detached',l:'Detached'},{v:'semi',l:'Semi-detached'},{v:'terrace',l:'Terrace'},{v:'end-terrace',l:'End terrace'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.arrangement===t.v,onClick:function(){set('arrangement',t.v);}});})):null,
+          grid(4,[{v:'z1',l:'Zone 1',sub:'Central'},{v:'z2',l:'Zone 2',sub:'Inner'},{v:'z3',l:'Zone 3',sub:'Outer'},{v:'z4-6',l:'Zone 4\u20136',sub:'Commuter'}].map(function(z){return e(OptBtn,{key:z.v,label:z.l,sub:z.sub,selected:S.zone===z.v,onClick:function(){set('zone',z.v);}});})),
+          e(NumField,{label:'Gross internal area (GIA)',sub:'Total enclosed floor area',value:S.giaRaw,onChange:function(v){set('giaRaw',v);},unit:S.giaUnit,onUnitChange:function(v){set('giaUnit',v);}}),
+          S.giaRaw > 0 && !giaValid ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'#EB5324',marginTop:-8,marginBottom:8,display:'flex',alignItems:'center',gap:6}},'\u26A0 Minimum 25m\u00B2 \u2014 below this the estimate is not reliable.') : null,
+          giaValid && giaM2 < 35 ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:-8,marginBottom:8}},'\u24D8 Double-check this is the full property area, not a single room.') : null,
+          giaValid && giaM2 > 600 ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:-8,marginBottom:8}},'\u24D8 For projects above 600m\u00B2, contact us directly.') : null
+        ),
+        // B: Layout
+        e(AccSection,{id:'layout',title:'Layout and access',expanded:expanded==='layout',locked:!pA,done:!!pB,onToggle:toggle,chips:pB?[e(Chip,{key:'b',value:S.bedrooms+' bed'}),e(Chip,{key:'f',value:S.floors+' floor'})]:null},
+          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bedrooms',value:S.bedrooms,onChange:function(v){set('bedrooms',v);},min:1}),e(Stepper,{label:'Floors',value:S.floors,onChange:function(v){set('floors',v);},min:1,max:5})),
+          grid(3,[{v:'standard',l:'Standard',sub:'~2.4m'},{v:'tall',l:'Tall',sub:'~2.9m'},{v:'double-height',l:'Double height',sub:'~3.8m'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.ceilingHeight===t.v,onClick:function(){set('ceilingHeight',t.v);}});})),
+          grid(3,[{v:'easy',l:'Easy access',sub:'Street level'},{v:'moderate',l:'Moderate',sub:'+8%'},{v:'difficult',l:'Difficult',sub:'+18%'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.access===t.v,onClick:function(){set('access',t.v);}});})),
+          grid(3,[{v:'open-plan',l:'Open plan'},{v:'semi-open',l:'Semi-open'},{v:'cellular',l:'Cellular'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.gfLayout===t.v,onClick:function(){set('gfLayout',t.v);}});})),
+          e(Stepper,{label:'Rooms on largest floor',value:S.roomsLargestFloor,onChange:function(v){set('roomsLargestFloor',v);},min:1,max:12})
+        ),
+        // C: Condition
+        e(AccSection,{id:'condition',title:'Property condition',expanded:expanded==='condition',locked:!pB,done:!!pC,onToggle:toggle,chips:pC?[e(Chip,{key:'h',value:S.handover==='empty'?'Empty':'Furnished'}),e(Chip,{key:'r',label:'Refurb',value:S.lastRefurb})]:null},
+          grid(2,[{v:'empty',l:'Empty and cleared',sub:'Baseline'},{v:'furnished',l:'Furnished',sub:'+5%'},{v:'part-cleared',l:'Part cleared',sub:'+3%'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.handover===t.v,onClick:function(){set('handover',t.v);}});})),
+          grid(3,[{v:'never',l:'Never',sub:'+12%'},{v:'20plus',l:'20+ years',sub:'+10%'},{v:'10to20',l:'10\u201320 years',sub:'+6%'},{v:'5to10',l:'5\u201310 years',sub:'+2%'},{v:'recent',l:'Recent',sub:'Base'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.lastRefurb===t.v,onClick:function(){set('lastRefurb',t.v);}});}))
+        ),
+        // D: Scope
+        e(AccSection,{id:'scope',title:'Scope of works',expanded:expanded==='scope',locked:!pC,done:!!pD,onToggle:toggle,chips:pD?[e(Chip,{key:'s',value:S.scope==='full'?'Full refurb':S.scope==='partial'?'Partial':S.scope==='kit-bath'?'Kit+bath':'Structural'})]:null},
+          grid(2,[{v:'full',l:'Full refurbishment',sub:'Every system'},{v:'partial',l:'Selected areas',sub:'Defined portion'},{v:'kit-bath',l:'Kitchen + bathrooms',sub:'Wet rooms only'},{v:'structural-only',l:'Structural only',sub:'No finishes'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.scope===t.v,onClick:function(){set('scope',t.v);}});})),
+          S.scope==='partial'?e(MultiSel,{label:'Areas included',sub:'Select all that apply',values:S.partialAreas,onToggle:function(v){setMulti('partialAreas',v);},cols:2,options:[{v:'living',l:'Living areas'},{v:'bedrooms',l:'All bedrooms'},{v:'master',l:'Master suite only'},{v:'kitchen',l:'Kitchen'},{v:'bathrooms',l:'Bathrooms'},{v:'one-floor',l:'One floor only'},{v:'excl-bathrooms',l:'Everything except bathrooms'},{v:'services-only',l:'Services only (MEP)'}]}):null,
+          grid(3,[{v:'full',l:'Full strip',sub:'To structure'},{v:'targeted',l:'Targeted',sub:'Select rooms'},{v:'cosmetic',l:'Cosmetic only',sub:'Surface'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.demo===t.v,onClick:function(){set('demo',t.v);}});})),
+          S.demo==='targeted'?e(Stepper,{label:'Rooms to strip out',value:S.demoRooms,onChange:function(v){set('demoRooms',v);},min:0,max:12}):null
+        ),
+        // E: Fabric
+        e(AccSection,{id:'fabric',title:'Building fabric',expanded:expanded==='fabric',locked:!pD,done:!!pE,onToggle:toggle,chips:pE?[e(Chip,{key:'d',value:'Doors: '+(S.doors||'none')})]:null},
+          isPeriod?e('div',{style:{marginBottom:16}},e(SysLabel,{text:'Period features'}),grid(2,[{v:'yes',l:'Restore features',sub:'Cornicing, roses, dado'},{v:'no',l:'No period restoration'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.periodFeatures===t.v,onClick:function(){set('periodFeatures',t.v);}});}))):null,
+          e(SysLabel,{text:'Windows'}),e(MultiSel,{label:'Window works',values:S.windowTypes,onToggle:function(v){setMulti('windowTypes',v);},cols:2,options:[{v:'none',l:'No window works'},{v:'replace',l:'Replace windows'},{v:'new',l:'New openings'},{v:'sash',l:'Sash restoration'}]}),
+          S.windowTypes.indexOf('replace')>=0?e(Stepper,{label:'Windows to replace',value:S.replaceCount,onChange:function(v){set('replaceCount',v);},min:0,max:30}):null,
+          S.windowTypes.indexOf('new')>=0?e(Stepper,{label:'New openings',value:S.newOpenings,onChange:function(v){set('newOpenings',v);},min:0,max:10}):null,
+          S.windowTypes.indexOf('sash')>=0?e(Stepper,{label:'Sash windows',value:S.sashCount,onChange:function(v){set('sashCount',v);},min:0,max:20}):null,
+          e(SysLabel,{text:'External doors',mt:8}),grid(2,[{v:'none',l:'No door works'},{v:'front',l:'Front door'},{v:'back',l:'Back door'},{v:'both',l:'Both'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.doors===t.v,onClick:function(){set('doors',t.v);}});})),
+          e(SysLabel,{text:'Rooflights',mt:8}),grid(3,[{v:'none',l:'None'},{v:'1',l:'1 rooflight'},{v:'2plus',l:'2+ rooflights'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.rooflights===t.v,onClick:function(){set('rooflights',t.v);}});}))
+        ),
+        // F: Electrical & plumbing
+        e(AccSection,{id:'elec-plumb',title:'Electrical and plumbing',expanded:expanded==='elec-plumb',locked:!pE,done:!!pF,onToggle:toggle,chips:pF?[e(Chip,{key:'el',value:S.electrical==='full-cu'?'Full rewire':S.electrical==='partial'?'Partial':'No elec'}),e(Chip,{key:'pl',value:S.plumbing||''})]:null},
+          e(SysLabel,{text:'Electrical'}),grid(3,[{v:'none',l:'No electrical'},{v:'partial',l:'Partial rewire',sub:'\u00A322\u2013\u00A334/m\u00B2'},{v:'full-cu',l:'Full rewire + CU',sub:'\u00A342\u2013\u00A362/m\u00B2'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.electrical===t.v,onClick:function(){set('electrical',t.v);}});})),
+          S.electrical&&S.electrical!=='none'?e('div',null,e(SysLabel,{text:'Electrical finishes',mt:8}),grid(3,[{v:'standard',l:'Standard',sub:'MK Logic/BG'},{v:'premium',l:'Premium',sub:'Varilight/Hamilton'},{v:'designer',l:'Designer',sub:'Buster+Punch/Lutron'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.elecFinish===t.v,onClick:function(){set('elecFinish',t.v);}});}))):null,
+          e(SysLabel,{text:'Plumbing',mt:8}),grid(3,[{v:'none',l:'No plumbing'},{v:'partial',l:'Partial',sub:'Bath + feeds'},{v:'full',l:'Full replumb',sub:'Whole system'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.plumbing===t.v,onClick:function(){set('plumbing',t.v);}});}))
+        ),
+        // G: Mechanical
+        e(AccSection,{id:'mechanical',title:'Mechanical systems',expanded:expanded==='mechanical',locked:!pF,done:!!pG,onToggle:toggle,chips:pG?[e(Chip,{key:'bo',value:'Boiler: '+(S.boiler||'')})]:null},
+          e(SysLabel,{text:'Boiler'}),grid(2,[{v:'keep',l:'Keep existing'},{v:'replace',l:'Replace like-for-like',sub:'\u00A31.5\u2013\u00A33k'},{v:'combi',l:'New combi',sub:'\u00A32.5\u2013\u00A34.5k'},{v:'system',l:'New system boiler',sub:'\u00A33.2\u2013\u00A35.8k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.boiler===t.v,onClick:function(){set('boiler',t.v);}});})),
+          e(SysLabel,{text:'Underfloor heating',mt:8}),grid(2,[{v:'none',l:'None'},{v:'wet-rooms',l:'Wet rooms only',sub:'Electric'},{v:'ground-floor',l:'Ground floor',sub:'Wet system'},{v:'whole-house',l:'Whole house',sub:'Wet system'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.ufhZone===t.v,onClick:function(){set('ufhZone',t.v);}});})),
+          e(SysLabel,{text:'Ventilation',mt:8}),grid(3,[{v:'none',l:'None'},{v:'extractors',l:'Extractor fans',sub:'\u00A3600\u2013\u00A31.8k'},{v:'mvhr',l:'MVHR system',sub:'\u00A33.5\u2013\u00A312k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.ventilation===t.v,onClick:function(){set('ventilation',t.v);}});})),
+          e(SysLabel,{text:'Smart home / AV',mt:8}),grid(3,[{v:'none',l:'None'},{v:'basic',l:'Basic smart',sub:'\u00A31.5\u2013\u00A34k'},{v:'full',l:'Full system',sub:'\u00A310\u2013\u00A325k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.smart===t.v,onClick:function(){set('smart',t.v);}});})),
+          e(SysLabel,{text:'Radiators',mt:8}),grid(2,[{v:'no',l:'Keep existing radiators'},{v:'yes',l:'Replace radiators'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.replaceRads===t.v,onClick:function(){set('replaceRads',t.v);}});})),
+          S.replaceRads==='yes'?e('div',null,e(Stepper,{label:'Number of radiators',value:S.radCount,onChange:function(v){set('radCount',v);},min:1,max:30}),grid(3,[{v:'standard',l:'Standard',sub:'\u00A3250\u2013\u00A3450'},{v:'premium',l:'Premium',sub:'\u00A3500\u2013\u00A31.2k'},{v:'designer',l:'Designer',sub:'\u00A31.2\u2013\u00A33.5k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.radTier===t.v,onClick:function(){set('radTier',t.v);}});}))):null
+        ),
+        // H: Kitchen
+        e(AccSection,{id:'kitchen',title:'Kitchen',expanded:expanded==='kitchen',locked:!pG,done:!!pH,onToggle:toggle,chips:pH?[e(Chip,{key:'k',value:S.kitchenScope==='keep'?'Keep':S.kitchenScope==='none'?'None':(S.kitTier||'')})]:null},
+          grid(2,[{v:'none',l:'Not in scope'},{v:'keep',l:'Keep existing'},{v:'replace',l:'Replace like-for-like'},{v:'new-layout',l:'New layout'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.kitchenScope===t.v,onClick:function(){set('kitchenScope',t.v);}});})),
+          (S.kitchenScope==='replace'||S.kitchenScope==='new-layout')?e('div',null,e(SysLabel,{text:'Kitchen tier',mt:8}),grid(3,[{v:'standard',l:'Standard',sub:'Howdens/Magnet'},{v:'premium',l:'Premium',sub:'Leicht/Tom Howley'},{v:'designer',l:'Designer',sub:'Bulthaup/SieMatic'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.kitTier===t.v,onClick:function(){set('kitTier',t.v);}});})),e(SysLabel,{text:'Kitchen size',mt:8}),grid(3,[{v:'small',l:'Small',sub:'<10 units'},{v:'medium',l:'Medium',sub:'10\u201318 units'},{v:'large',l:'Large',sub:'18+ units'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.kitSize===t.v,onClick:function(){set('kitSize',t.v);}});})),e(SysLabel,{text:'Appliances',mt:8}),grid(2,[{v:'none',l:'Not included'},{v:'standard',l:'Standard',sub:'Bosch/Neff'},{v:'premium',l:'Premium',sub:'Miele/Gaggenau'},{v:'full',l:'Full package'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.appliances===t.v,onClick:function(){set('appliances',t.v);}});}))):null
+        ),
+        // I: Bathrooms & furniture
+        e(AccSection,{id:'bath-furn',title:'Bathrooms and furniture',expanded:expanded==='bath-furn',locked:!pH,done:!!pI,onToggle:toggle,chips:pI?[e(Chip,{key:'ba',value:S.bathrooms+' bath'}),e(Chip,{key:'bt',value:S.bathTier||''})]:null},
+          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bathrooms',value:S.bathrooms,onChange:function(v){set('bathrooms',v);},min:0}),e(Stepper,{label:'Cloakrooms',value:S.cloakrooms,onChange:function(v){set('cloakrooms',v);},min:0})),
+          S.bathrooms>0?e('div',null,e(SysLabel,{text:'Bathroom tier'}),grid(3,[{v:'standard',l:'Standard',sub:'Roca/Ideal Standard'},{v:'premium',l:'Premium',sub:'Duravit/Hansgrohe'},{v:'designer',l:'Designer',sub:'V+A/Dornbracht'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.bathTier===t.v,onClick:function(){set('bathTier',t.v);}});}))):null,
+          e(SysLabel,{text:'Freestanding bath',mt:8}),grid(3,[{v:'none',l:'None'},{v:'1',l:'1 bath'},{v:'2plus',l:'2+ baths'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.freestandingBath===t.v,onClick:function(){set('freestandingBath',t.v);}});})),
+          e(SysLabel,{text:'Bespoke furniture',mt:8}),grid(2,[{v:'no',l:'No bespoke furniture'},{v:'yes',l:'Yes \u2014 wardrobes / joinery'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.bespokeFurniture===t.v,onClick:function(){set('bespokeFurniture',t.v);}});})),
+          S.bespokeFurniture==='yes'?e('div',null,e(NumField,{label:'Linear metres',value:S.furnitureLM,onChange:function(v){set('furnitureLM',v);}}),grid(3,[{v:'standard',l:'Standard',sub:'2.2m'},{v:'full',l:'Full height',sub:'2.4m'},{v:'tall',l:'Tall / double',sub:'2.7m+'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureHeight===t.v,onClick:function(){set('furnitureHeight',t.v);}});})),grid(3,[{v:'standard',l:'Standard',sub:'\u00A31\u20131.3k/lm'},{v:'premium',l:'Premium',sub:'\u00A31.5\u20132k/lm'},{v:'designer',l:'Designer',sub:'\u00A32.2\u20133.2k/lm'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureTier===t.v,onClick:function(){set('furnitureTier',t.v);}});}))):null
+        ),
+        // J: Finishes
+        e(AccSection,{id:'finishes',title:'Finishes',expanded:expanded==='finishes',locked:!pI,done:!!pJ,onToggle:toggle,chips:pJ?[e(Chip,{key:'fl',value:S.flooring}),e(Chip,{key:'de',value:S.decoration})]:null},
+          e(SysLabel,{text:'Flooring'}),grid(2,[{v:'eng-wood',l:'Engineered wood',sub:'\u00A348\u2013\u00A3125/m\u00B2'},{v:'solid-wood',l:'Solid wood',sub:'\u00A385\u2013\u00A3185/m\u00B2'},{v:'lvt',l:'LVT',sub:'\u00A335\u2013\u00A390/m\u00B2'},{v:'mixed',l:'Mixed',sub:'Wood + tile'},{v:'carpet',l:'Carpet',sub:'\u00A322\u2013\u00A360/m\u00B2'},{v:'none',l:'Not in scope'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.flooring===t.v,onClick:function(){set('flooring',t.v);}});})),
+          e(SysLabel,{text:'Decoration',mt:8}),grid(2,[{v:'repaint',l:'Full repaint',sub:'\u00A325\u2013\u00A340/m\u00B2'},{v:'repaint-feature',l:'Repaint + features',sub:'\u00A342\u2013\u00A368/m\u00B2'},{v:'bespoke',l:'Bespoke',sub:'\u00A370\u2013\u00A3125/m\u00B2'},{v:'none',l:'Not in scope'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.decoration===t.v,onClick:function(){set('decoration',t.v);}});})),
+          e(SysLabel,{text:'Skirtings and architraves',mt:8}),grid(3,[{v:'keep',l:'Keep existing'},{v:'standard',l:'Standard',sub:'\u00A326\u2013\u00A344/lm'},{v:'bespoke',l:'Bespoke',sub:'\u00A352\u2013\u00A3105/lm'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.skirtings===t.v,onClick:function(){set('skirtings',t.v);}});}))
+        ),
+        // K: Structural
+        e(AccSection,{id:'structural',title:'Structural works',expanded:expanded==='structural',locked:!pJ,done:!!pK,onToggle:toggle,chips:pK?[e(Chip,{key:'st',value:S.structural.indexOf('none')>=0?'None':S.structural.join(', ')})]:null},
+          e(MultiSel,{label:'Structural items',sub:'Select all that apply',values:S.structural,onToggle:toggleStruct,cols:2,options:[{v:'none',l:'None'},{v:'walls',l:'Wall removal(s)'},{v:'loft',l:'Loft conversion'},{v:'extension',l:'Extension'},{v:'basement',l:'Basement'}]}),
+          S.structural.indexOf('loft')>=0?e(NumField,{label:'Loft area',value:S.loftRaw,onChange:function(v){set('loftRaw',v);},unit:S.loftUnit,onUnitChange:function(v){set('loftUnit',v);}}):null,
+          S.structural.indexOf('extension')>=0?e('div',null,e(NumField,{label:'Extension area',value:S.extRaw,onChange:function(v){set('extRaw',v);},unit:S.extUnit,onUnitChange:function(v){set('extUnit',v);}}),grid(2,[{v:'single',l:'Single storey'},{v:'double',l:'Double storey'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.storeys===t.v,onClick:function(){set('storeys',t.v);}});}))):null,
+          S.structural.indexOf('basement')>=0?e('div',null,e(NumField,{label:'Basement area',value:S.basRaw,onChange:function(v){set('basRaw',v);},unit:S.basUnit,onUnitChange:function(v){set('basUnit',v);}}),grid(2,[{v:'fitout',l:'Fit-out only',sub:'Existing void'},{v:'excavation',l:'Excavation',sub:'New dig'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.basType===t.v,onClick:function(){set('basType',t.v);}});}))):null
+        ),
+        // L: External & programme
+        e(AccSection,{id:'external',title:'External works and programme',expanded:expanded==='external',locked:!pK,done:!!pL,onToggle:toggle,chips:pL?[e(Chip,{key:'ex',value:S.external.indexOf('none')>=0?'None':S.external.join(', ')}),e(Chip,{key:'pr',value:S.programme})]:null},
+          e(SysLabel,{text:'External works'}),e(MultiSel,{label:'External items',values:S.external,onToggle:toggleExt,cols:2,options:[{v:'none',l:'None'},{v:'garden',l:'Garden / landscaping'},{v:'facade',l:'Facade repairs'}]}),
+          S.external.indexOf('garden')>=0?e('div',null,e(SysLabel,{text:'Garden size'}),grid(3,[{v:'small',l:'Small',sub:'~60m\u00B2'},{v:'medium',l:'Medium',sub:'~120m\u00B2'},{v:'large',l:'Large',sub:'~220m\u00B2'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.gardenSize===t.v,onClick:function(){set('gardenSize',t.v);}});}))):null,
+          e(SysLabel,{text:'Programme preference',mt:8}),grid(2,[{v:'standard',l:'Standard programme'},{v:'accelerated',l:'Accelerated',sub:'Premium rate'},{v:'target',l:'Target date'},{v:'flexible',l:'Flexible'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.programme===t.v,onClick:function(){set('programme',t.v);}});})),
+          e(SysLabel,{text:'Project purpose',mt:8}),grid(2,[{v:'personal',l:'Own home'},{v:'rental',l:'Rental / investment'},{v:'sale',l:'Sale preparation'},{v:'relocation',l:'Relocation'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.purpose===t.v,onClick:function(){set('purpose',t.v);}});}))
+        ),
+        // (Send button is in the right-column estimate card)
+      )
+    ), // end left column
 
-  // 3-second calculating animation before showing estimate
-  useEffect(() => {
-    if (est && allDone) {
-      if (!showResult && !isCalculating) {
-        setIsCalculating(true);
-        calcTimerRef.current = setTimeout(() => {
-          setIsCalculating(false);
-          setShowResult(true);
-        }, 3000);
-      }
-    } else {
-      if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
-      setShowResult(false);
-      setIsCalculating(false);
-    }
-    return () => { if (calcTimerRef.current) clearTimeout(calcTimerRef.current); };
-  }, [est && allDone]);
+    // RIGHT COLUMN — sticky estimate card
+    e('div', { className:'calc-sidebar', style:{ position:'sticky', top:88, alignSelf:'start' } },
+      // PROGRESS row
+      e('div', { style:{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 } },
+        e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontWeight:600, fontSize:11, letterSpacing:'0.15em', color:'#00978D', textTransform:'uppercase' }}, 'Progress'),
+        e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontWeight:600, fontSize:11, letterSpacing:'0.15em', color:'#00978D', textTransform:'uppercase' }}, doneCount + ' / 12')),
+      // Card frame
+      e('div', { style:{ border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, overflow:'hidden' } },
+        // Title bar
+        e('div', { style:{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.06)' } },
+          e('div', { style:{ display:'flex', gap:5 } }, [0,1,2].map(function(i){ return e('span', { key:i, style:{ width:7, height:7, borderRadius:'50%', background:'rgba(255,255,255,0.08)' }}); })),
+          e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.25)', textTransform:'uppercase' }}, 'MG-CALC-V9'),
+          e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.25)', textTransform:'uppercase' }}, showSpinner ? 'Processing' : estimateRevealed ? 'Ready' : 'Standby')),
+        // Card body
+        e('div', { style:{ padding:'16px 18px 18px' } },
+          // LIVE ESTIMATE label
+          e('div', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:10, letterSpacing:'0.15em', color:'#00978D', textTransform:'uppercase', marginBottom:10 }}, 'Live estimate \u00B7 ex. VAT'),
+          // Estimate value — spinner / error / gates / ceiling cap / figures / placeholder
+          showSpinner ?
+            e('div', { style:{ display:'flex', alignItems:'center', gap:10, minHeight:80 } },
+              e('div', { style:{ width:20, height:20, border:'2px solid rgba(0,151,141,0.15)', borderTopColor:'#00978D', borderRadius:'50%', animation:'calcSpin 1s linear infinite' }}),
+              e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:1.5, color:'#00978D', textTransform:'uppercase', animation:'calcPulse 1.5s ease infinite' }}, 'Processing')) :
+          estError ?
+            e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'rgba(255,255,255,0.3)', minHeight:80, display:'flex', alignItems:'center', lineHeight:1.5 }}, estError) :
+          // CRIT-03: structural-only with no real items
+          (allDone && est === null && !showSpinner && S.scope === 'structural-only' && (!S.structural || !S.structural.length || S.structural.indexOf('none') >= 0)) ?
+            e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'rgba(255,255,255,0.25)', minHeight:80, display:'flex', alignItems:'center', lineHeight:1.6 }}, 'Select at least one structural item before we can show a range.') :
+          // MED-02: kit-bath with no kitchen/bath/cloak
+          (allDone && est === null && !showSpinner && S.scope === 'kit-bath' && (S.kitchenScope === 'none' || !S.kitchenScope) && (S.bathrooms || 0) === 0 && (S.cloakrooms || 0) === 0) ?
+            e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'rgba(255,255,255,0.25)', minHeight:80, display:'flex', alignItems:'center', lineHeight:1.6 }}, "You've selected kitchen & bathroom but haven't chosen either. Pick at least one.") :
+          // HIGH-01: ceiling cap — replace figures with Calendly CTA
+          (estimateRevealed && est && est.ceilingCapped === true) ?
+            e('div', { style:{ minHeight:80, animation:'estFadeIn 400ms ease both' } },
+              e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:14, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.06)', lineHeight:1.6 }}, 'This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement.'),
+              e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6, marginBottom:16 }}, 'At this scale, a parametric estimate is indicative at best.'),
+              e('a', { href:'https://calendly.com/team-myrmexgroup/30min', target:'_blank', rel:'noopener noreferrer',
+                style:{ display:'inline-flex', alignItems:'center', justifyContent:'center', height:44, padding:'0 24px', background:'transparent', border:'1.5px solid #00978D', borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#00978D', textDecoration:'none', textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer' }}, 'BOOK A CALL')) :
+          estimateRevealed && est ?
+            e('div', { style:{ animation:'estFadeIn 400ms ease both' } },
+              // CRIT-04: disclaimer moved ABOVE figures, raised to 13px, white-tinted
+              e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:14, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.06)', lineHeight:1.6 }}, 'This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement.'),
+              // LOW
+              e('div', { style:{ display:'flex', alignItems:'baseline', gap:8, marginBottom:4 } },
+                e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', width:36 }}, 'Low'),
+                e('span', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:400, fontSize:14, color:'rgba(0,151,141,0.6)' }}, fmt(est.low))),
+              // MID
+              e('div', { style:{ marginBottom:4 } },
+                e('span', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:500, fontSize:28, color:'#00978D', textShadow:'0 0 24px rgba(0,151,141,0.2)' }}, fmt(est.mid))),
+              // HIGH
+              e('div', { style:{ display:'flex', alignItems:'baseline', gap:8 } },
+                e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', width:36 }}, 'High'),
+                e('span', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:400, fontSize:14, color:'rgba(0,151,141,0.6)' }}, fmt(est.high))),
+              // HIGH-09: timeline programme caveat (only if backend returned timeline data)
+              est.timeline && e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'rgba(255,255,255,0.25)', marginTop:10, fontStyle:'italic' }}, 'Preliminary programme only. Confirmed during PCSA.')) :
+            e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:500, fontSize:22, color:'rgba(255,255,255,0.08)', minHeight:80, display:'flex', alignItems:'center' }}, '\u2014 \u2014'),
+          // Divider
+          e('div', { style:{ borderTop:'1px solid rgba(255,255,255,0.06)', margin:'16px 0' } }),
+          // SEND button — locked if already sent for this estimate
+          (function(){
+            var canSend = allDone && estimateRevealed && !(sentEstMid !== null && est && est.mid === sentEstMid);
+            var alreadySent = sentEstMid !== null && est && est.mid === sentEstMid;
+            return e(React.Fragment, null,
+              e('button', { onClick:function(){ if(canSend) setShowModal(true); },
+                onMouseOver:function(ev){ if(canSend) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+                onMouseOut:function(ev){ if(canSend) { ev.target.style.background='#EB5324'; ev.target.style.borderColor='#EB5324'; } },
+                onMouseDown:function(ev){ if(canSend) { ev.target.style.background='#A83A1A'; ev.target.style.borderColor='#A83A1A'; } },
+                onMouseUp:function(ev){ if(canSend) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+                style:{ width:'100%', padding:'12px 0', background:canSend?'#EB5324':alreadySent?'rgba(0,151,141,0.12)':'rgba(255,255,255,0.04)', border:'1px solid '+(canSend?'#EB5324':alreadySent?'rgba(0,151,141,0.25)':'rgba(255,255,255,0.06)'), borderRadius:6, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:canSend?'#fff':alreadySent?'rgba(0,151,141,0.5)':'rgba(255,255,255,0.15)', cursor:canSend?'pointer':'default', textTransform:'uppercase', letterSpacing:'0.08em', transition:'all 150ms' }}, alreadySent ? 'Breakdown sent' : 'Send me full breakdown'),
+              // Helper text
+              !allDone ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:8 }}, 'Complete sections to unlock.') :
+              !estimateRevealed ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:8 }}, 'Processing estimate\u2026') :
+              alreadySent ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(0,151,141,0.4)', textAlign:'center', marginTop:8 }}, 'Adjust scope to generate a new estimate.') : null);
+          }()))
+    )) // end card frame + right column
 
-  // Per-section answered counts
-  const s1Ans = [S.propertyType, S.tenure, S.listed, S.buildingAge, effectiveArrangement, S.zone, giaValid ? true : null, S.bedrooms > 0 ? true : null, S.floors > 0 ? true : null, S.ceilingHeight, S.access, S.gfLayout, S.roomsLargestFloor > 0 ? true : null].filter(Boolean).length;
-  const s2Ans = [S.handover, S.lastRefurb].filter(Boolean).length;
-  const s3Of_dyn = S.scope === 'partial' ? 3 : 2;
-  const s3Ans = [S.scope ? true : null, S.scope === 'partial' ? S.partialAreas.length > 0 ? true : null : null, S.demo ? true : null].filter(Boolean).length;
-  const s4Ans = [isPeriod ? S.periodFeatures : true].filter(Boolean).length;
-  const s5Ans = [S.windowTypes && S.windowTypes.length > 0 ? true : null, S.doors, S.rooflights].filter(Boolean).length;
-  const s6Ans = [S.electrical, S.electrical !== 'none' ? S.elecFinish : null].filter(Boolean).length;
-  const s7Ans = [S.plumbing].filter(Boolean).length;
-  const s8Ans = [S.boiler, S.ufhZone !== null ? true : null, S.ventilation, S.smart, S.replaceRads !== null ? true : null].filter(Boolean).length;
-  const s9Of_dyn = kitActive ? 4 : 1;
-  const s9Ans = [S.kitchenScope ? true : null, kitActive ? S.kitTier ? true : null : null, kitActive ? S.kitSize ? true : null : null, kitActive ? S.appliances ? true : null : null].filter(Boolean).length;
-  const s10Of_dyn = S.bathrooms > 0 ? 4 : 3;
-  const s10Ans = [S.bathrooms > 0 ? true : null, S.bathrooms > 0 ? S.bathTier : null, S.freestandingBath ? true : null, true].filter(Boolean).length;
-  const s11Of_dyn = S.bespokeFurniture === 'yes' ? 4 : 1;
-  const s11Ans = [S.bespokeFurniture ? true : null, S.bespokeFurniture === 'yes' ? S.furnitureLM > 0 ? true : null : null, S.bespokeFurniture === 'yes' ? S.furnitureHeight ? true : null : null, S.bespokeFurniture === 'yes' ? S.furnitureTier ? true : null : null].filter(Boolean).length;
-  const s12Ans = [S.flooring, S.decoration, S.skirtings].filter(Boolean).length;
-  const s13Ans = [S.structuralAnswered ? true : null].filter(Boolean).length;
-  const s14Ans = [S.external.length > 0 ? true : null, gardenSelected ? (S.gardenSize ? true : null) : null].filter(Boolean).length;
-  const s15Ans = [S.programme].filter(Boolean).length;
-  const s16Ans = [S.purpose].filter(Boolean).length;
-  const s1Of = 13,
-    s2Of = 2,
-    s3Of = s3Of_dyn,
-    s4Of = isPeriod ? 1 : 0,
-    s5Of = 3,
-    s6Of = S.electrical === 'none' ? 1 : 2,
-    s7Of = 1,
-    s8Of = 5,
-    s9Of = s9Of_dyn,
-    s10Of = s10Of_dyn,
-    s11Of = s11Of_dyn,
-    s12Of = 3,
-    s13Of = 1,
-    s14Of = gardenSelected ? 2 : 1,
-    s15Of = 1,
-    s16Of = 1;
-  return /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: 'var(--dark-base)',
-      minHeight: '100vh'
-    }
-  }, /*#__PURE__*/React.createElement("style", null, `@keyframes fadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`), showModal && /*#__PURE__*/React.createElement(ContactModal, {
-    onClose: () => setShowModal(false),
-    S: S,
-    rawEst: est
-  }),
-  /* HIGH-08: Z1 entry framing — one line above the calculator */
-  /*#__PURE__*/React.createElement("div", {
-    style: {
-      maxWidth: 1120,
-      margin: '0 auto',
-      padding: '32px 80px 0',
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontSize: 14,
-      color: 'rgba(255,255,255,0.4)',
-      marginBottom: -8
-    }
-  }, "An indicative budget range for your property — not a binding quote."),
-  /*#__PURE__*/React.createElement("div", {
-    style: {
-      maxWidth: 1120,
-      margin: '0 auto',
-      padding: '48px 80px 80px',
-      display: 'grid',
-      gridTemplateColumns: '1fr 340px',
-      gap: 48,
-      alignItems: 'start'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "questions-card",
-    style: {
-      background: 'rgba(255,255,255,0.03)',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 8,
-      padding: '24px'
-    }
-  }, /*#__PURE__*/React.createElement(Section, {
-    num: 1,
-    total: TOTAL,
-    answered: s1Ans,
-    outOf: s1Of,
-    done: !!s1Done,
-    title: "Project Definition",
-    info: "The foundations of your estimate. Every cost multiplier in the calculator flows from what you enter here \u2014 property type, age, location, and size are the four biggest drivers of your total. Take your time on this section.",
-    visible: true
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Property type",
-    value: S.propertyType,
-    onPick: v => {
-      set('propertyType', v);
-      if (['period-flat', 'newbuild-flat'].includes(v)) set('arrangement', 'flat');else if (v && !['period-flat', 'newbuild-flat'].includes(v) && S.arrangement === 'flat') set('arrangement', null);
-    },
-    cols: 2,
-    options: [{
-      v: 'period-house',
-      label: 'Period house'
-    }, {
-      v: 'period-flat',
-      label: 'Period flat / maisonette'
-    }, {
-      v: 'newbuild-house',
-      label: 'New-build house'
-    }, {
-      v: 'newbuild-flat',
-      label: 'New-build flat'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Tenure",
-    value: S.tenure,
-    onPick: pick('tenure'),
-    cols: 2,
-    options: [{
-      v: 'freehold',
-      label: 'Freehold'
-    }, {
-      v: 'leasehold',
-      label: 'Leasehold',
-      small: 'Triggers Licence to Alter'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Listed building status",
-    sub: "Affects specialist trades, materials approvals, and contingency rate",
-    value: S.listed,
-    onPick: pick('listed'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'Not listed'
-    }, {
-      v: 'grade2',
-      label: 'Grade II',
-      small: '+8% to base'
-    }, {
-      v: 'grade2star',
-      label: 'Grade II*',
-      small: '+10%'
-    }, {
-      v: 'grade1',
-      label: 'Grade I',
-      small: '+12%'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Building age",
-    value: S.buildingAge,
-    onPick: pick('buildingAge'),
-    cols: 2,
-    options: [{
-      v: 'pre1900',
-      label: 'Pre-1900',
-      small: '+12%'
-    }, {
-      v: '1900-1960',
-      label: '1900–1960',
-      small: '+7%'
-    }, {
-      v: '1960-2000',
-      label: '1960–2000',
-      small: '+3%'
-    }, {
-      v: 'post2000',
-      label: 'Post-2000',
-      small: 'Baseline'
-    }]
-  }), isFlat ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: 500,
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.5)',
-      marginBottom: 8,
-      textTransform: 'uppercase'
-    }
-  }, "Property arrangement"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '10px 12px',
-      border: '1px solid rgba(0,151,141,0.3)',
-      borderRadius: 4,
-      background: 'rgba(0,151,141,0.06)',
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontSize: 12,
-      color: 'rgba(0,151,141,0.8)'
-    }
-  }, "Flat / apartment ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(0,151,141,0.5)',
-      marginLeft: 8
-    }
-  }, "Auto-set from property type"))) : /*#__PURE__*/React.createElement(Sel, {
-    label: "Property arrangement",
-    value: S.arrangement,
-    onPick: pick('arrangement'),
-    cols: 2,
-    options: [{
-      v: 'detached',
-      label: 'Detached'
-    }, {
-      v: 'semi',
-      label: 'Semi-detached'
-    }, {
-      v: 'terrace',
-      label: 'Mid-terrace'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Location",
-    value: S.zone,
-    onPick: pick('zone'),
-    cols: 2,
-    options: [{
-      v: 'z1',
-      label: 'Zone 1',
-      small: 'Central London'
-    }, {
-      v: 'z2',
-      label: 'Zone 2',
-      small: 'Inner London'
-    }, {
-      v: 'z3',
-      label: 'Zone 3',
-      small: 'Outer London'
-    }, {
-      v: 'z4-6',
-      label: 'Zone 4–6',
-      small: 'Commuter belt'
-    }]
-  }), /*#__PURE__*/React.createElement(NumInput, {
-    label: "Gross internal area (GIA)",
-    sub: "Total floor area of the property being worked on",
-    value: S.giaRaw,
-    onChange: v => set('giaRaw', v),
-    unit: S.giaUnit,
-    onUnitChange: v => set('giaUnit', v)
-  }), S.giaRaw > 0 && !giaValid && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: '#EB5324',
-      marginTop: -10,
-      marginBottom: 12
-    }
-  }, "\u26A0 Minimum 25m\xB2 \u2014 below this the estimate is not reliable."), giaValid && giaM2 < 35 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(235,83,36,0.7)',
-      marginTop: -10,
-      marginBottom: 12
-    }
-  }, "Double-check this is the full property area, not a single room."), giaValid && giaM2 > 600 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(235,83,36,0.7)',
-      marginTop: -10,
-      marginBottom: 12
-    }
-  }, "For projects above 600m\xB2, contact us directly."), /*#__PURE__*/React.createElement(Stepper, {
-    label: "Bedrooms",
-    sub: "Includes any room used as a bedroom, study, or nursery",
-    value: S.bedrooms,
-    onChange: v => set('bedrooms', v),
-    min: 1,
-    max: 12
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    label: "Floors being worked on",
-    sub: "Affects logistics, programme duration, and vertical services runs",
-    value: S.floors,
-    onChange: v => set('floors', v),
-    min: 1,
-    max: 5
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Ceiling height",
-    value: S.ceilingHeight,
-    onPick: pick('ceilingHeight'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'Under 2.6m'
-    }, {
-      v: 'tall',
-      label: 'Tall',
-      small: '2.6–3.2m · +8%'
-    }, {
-      v: 'double-height',
-      label: 'Double-height',
-      small: 'Over 3.2m · +20%'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Access difficulty",
-    value: S.access,
-    onPick: pick('access'),
-    cols: 3,
-    options: [{
-      v: 'easy',
-      label: 'Easy',
-      small: 'Ground floor'
-    }, {
-      v: 'moderate',
-      label: 'Moderate',
-      small: 'Upper + lift · +8%'
-    }, {
-      v: 'difficult',
-      label: 'Difficult',
-      small: 'Upper, no lift · +18%'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Ground floor layout",
-    sub: S.floors > 1 ? "Upper floors assumed cellular. This question is about the ground floor only." : isFlat && S.bedrooms <= 1 ? "Studio or single-room flat — select Fully open plan and set rooms to 1." : "Describes how the main living space is arranged.",
-    value: S.gfLayout,
-    onPick: pick('gfLayout'),
-    cols: 3,
-    options: [{
-      v: 'cellular',
-      label: 'Traditional cellular',
-      small: 'Separate kitchen, dining, living'
-    }, {
-      v: 'semi-open',
-      label: 'Semi-open plan',
-      small: 'Kitchen-diner or knocked through'
-    }, {
-      v: 'open-plan',
-      label: 'Fully open plan',
-      small: 'Studio or single open space'
-    }]
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    label: "Rooms on the largest floor",
-    sub: "Tightens the layout inference. No measuring required.",
-    value: S.roomsLargestFloor,
-    onChange: v => set('roomsLargestFloor', v),
-    min: 1,
-    max: 10
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 2,
-    total: TOTAL,
-    answered: s2Ans,
-    outOf: s2Of,
-    done: !!s2Done,
-    title: "Property State",
-    info: "Two questions about the property's current state. Handover affects mobilisation \u2014 a furnished flat costs more to start because of removals, skip hire, and labour. Last refurbished affects discovery risk \u2014 the older the fabric, the more we find when we open walls. Both feed directly into the estimate.",
-    visible: !!s1Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "How will the property be handed over?",
-    value: S.handover,
-    onPick: pick('handover'),
-    cols: 2,
-    options: [{
-      v: 'empty',
-      label: 'Empty & cleared',
-      small: 'Services isolated, ready to start — baseline'
-    }, {
-      v: 'furnished',
-      label: 'Furnished / contents still in',
-      small: 'Removals, skip hire, extra labour — +5%'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "When was it last refurbished?",
-    sub: "Affects discovery risk \u2014 what we find when we open walls and floors.",
-    value: S.lastRefurb,
-    onPick: pick('lastRefurb'),
-    cols: 3,
-    options: [{
-      v: 'never',
-      label: 'Never / original',
-      small: 'All original fabric — +12%'
-    }, {
-      v: '20plus',
-      label: '20+ years ago',
-      small: 'Likely outdated systems — +10%'
-    }, {
-      v: '10to20',
-      label: '10–20 years ago',
-      small: 'Mixed condition — +6%'
-    }, {
-      v: '5to10',
-      label: '5–10 years ago',
-      small: 'Reasonable condition — +2%'
-    }, {
-      v: 'recent',
-      label: 'Within 5 years',
-      small: 'Baseline'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 3,
-    total: TOTAL,
-    answered: s3Ans,
-    outOf: s3Of,
-    done: !!s3Done,
-    title: "Scope & Strip-Out",
-    info: "Full refurbishment: every system is touched \u2014 structure, MEP, finishes, all rooms. Selected rooms / one floor: a defined portion only \u2014 e.g. full rewire and new kitchen, or one floor completely done, skipping bathrooms. Kitchen + bathrooms only: wet rooms and their services, nothing structural. Structural alteration only: no finishes \u2014 structural changes plus making good only.",
-    visible: !!s2Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Overall scope",
-    value: S.scope,
-    onPick: pick('scope'),
-    cols: 2,
-    options: [{
-      v: 'full',
-      label: 'Full refurbishment'
-    }, {
-      v: 'partial',
-      label: 'Selected rooms / one floor',
-      small: 'Not a full refurb — e.g. one floor, or all except bathrooms'
-    }, {
-      v: 'kit-bath',
-      label: 'Kitchen + bathrooms only'
-    }, {
-      v: 'structural-only',
-      label: 'Structural alteration only'
-    }]
-  }), S.scope === 'partial' && /*#__PURE__*/React.createElement(MultiSel, {
-    label: "Which areas are included?",
-    sub: "Select everything in scope. This tightens the estimate and helps us understand the project.",
-    values: S.partialAreas,
-    onToggle: togglePartialAreas,
-    cols: 2,
-    options: [{
-      v: 'living',
-      label: 'Living areas',
-      small: 'Reception, dining, hallways'
-    }, {
-      v: 'bedrooms',
-      label: 'All bedrooms',
-      small: 'Every bedroom'
-    }, {
-      v: 'master',
-      label: 'Master bedroom only',
-      small: 'Single room'
-    }, {
-      v: 'one-floor',
-      label: 'One complete floor',
-      small: 'All rooms on a single floor'
-    }, {
-      v: 'kitchen',
-      label: 'Kitchen',
-      small: 'Kitchen only — not bathrooms'
-    }, {
-      v: 'bathrooms',
-      label: 'Bathrooms',
-      small: 'Bathrooms only — not kitchen'
-    }, {
-      v: 'excl-bathrooms',
-      label: 'Everything except bathrooms',
-      small: 'Full scope minus wet rooms'
-    }, {
-      v: 'services-only',
-      label: 'Services only',
-      small: 'MEP throughout — no finishes'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Strip-out scope",
-    sub: "Costs are dynamic \u2014 scaled by property size, type, and condition.",
-    value: S.demo,
-    onPick: pick('demo'),
-    cols: 3,
-    options: [{
-      v: 'full',
-      label: 'Full strip to structure',
-      small: 'Everything back to bare walls, floors, ceilings'
-    }, {
-      v: 'targeted',
-      label: 'Targeted strip',
-      small: 'Specific rooms or areas only — kitchen, bathrooms, one floor'
-    }, {
-      v: 'cosmetic',
-      label: 'Cosmetic only',
-      small: 'Surface finishes only — no services or structure exposed'
-    }]
-  }), S.demo === 'targeted' && /*#__PURE__*/React.createElement(Stepper, {
-    label: "Additional rooms being stripped (beyond kitchen + bathrooms)",
-    sub: "Kitchen and bathrooms are already counted from your other selections.",
-    value: S.demoRooms,
-    onChange: v => set('demoRooms', v),
-    min: 0,
-    max: 10
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 4,
-    total: TOTAL,
-    answered: s4Ans,
-    outOf: s4Of,
-    done: !!s4Done,
-    title: "Structure",
-    info: "For period properties, original features \u2014 cornicing, ceiling roses, panelled doors, dado rails \u2014 require specialist trades to restore and are priced separately from the main build rate. For modern properties, structure costs are derived automatically from your GIA and property type.",
-    visible: !!s3Done
-  }, isPeriod ? /*#__PURE__*/React.createElement(Sel, {
-    label: "Retain and restore original period features?",
-    sub: "Cornicing, ceiling roses, dado rails, picture rails, panelled doors",
-    value: S.periodFeatures,
-    onPick: pick('periodFeatures'),
-    cols: 2,
-    options: [{
-      v: 'yes',
-      label: 'Yes — retain & restore',
-      small: '+£18–£30/m² + £300–£600/room'
-    }, {
-      v: 'no',
-      label: 'No — modern finish'
-    }]
-  }) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.25)',
-      padding: '12px 14px',
-      background: 'rgba(255,255,255,0.02)',
-      borderRadius: 4,
-      border: '1px solid rgba(255,255,255,0.06)',
-      lineHeight: 1.7
-    }
-  }, "Structure costs calculated automatically from your property inputs.")), /*#__PURE__*/React.createElement(Section, {
-    num: 5,
-    total: TOTAL,
-    answered: s5Ans,
-    outOf: s5Of,
-    done: !!s5Done,
-    title: "External Fabric",
-    info: "The building envelope: windows, doors, and rooflights. These are often overlooked in early budgets but carry significant cost \u2014 especially sash restoration or new structural openings. If you're not changing them, select No change.",
-    visible: !!s3Done && s4Done
-  }, /*#__PURE__*/React.createElement(MultiSel, {
-    label: "Windows \u2014 select all that apply",
-    sub: "You can combine types \u2014 e.g. replacing existing windows and cutting new openings.",
-    values: S.windowTypes,
-    onToggle: v => {
-      setS(p => {
-        if (v === 'none') return {
-          ...p,
-          windowTypes: ['none'],
-          replaceCount: 0,
-          newOpenings: 0,
-          sashCount: 0
-        };
-        let arr = p.windowTypes.filter(x => x !== 'none');
-        if (arr.includes(v)) arr = arr.filter(x => x !== v);else arr.push(v);
-        return {
-          ...p,
-          windowTypes: arr
-        };
-      });
-    },
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'No window works'
-    }, {
-      v: 'replace',
-      label: 'Replace existing',
-      small: 'Like-for-like · £650–£1,200 each'
-    }, {
-      v: 'new',
-      label: 'New openings',
-      small: 'New structural opening + window · £1,500–£2,800 each'
-    }, {
-      v: 'sash',
-      label: 'Sash restoration',
-      small: 'Overhaul existing sash windows · £850–£1,600 each'
-    }]
-  }), S.windowTypes.includes('replace') && /*#__PURE__*/React.createElement(Stepper, {
-    label: "How many windows being replaced?",
-    value: S.replaceCount,
-    onChange: v => set('replaceCount', v),
-    min: 1,
-    max: 30
-  }), S.windowTypes.includes('new') && /*#__PURE__*/React.createElement(Stepper, {
-    label: "How many new openings?",
-    sub: "Each new opening requires structural work \u2014 lintel, reveals, making good.",
-    value: S.newOpenings,
-    onChange: v => set('newOpenings', v),
-    min: 1,
-    max: 10
-  }), S.windowTypes.includes('sash') && /*#__PURE__*/React.createElement(Stepper, {
-    label: "How many sash windows?",
-    value: S.sashCount,
-    onChange: v => set('sashCount', v),
-    min: 1,
-    max: 20
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "External doors",
-    value: S.doors,
-    onPick: pick('doors'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'No change'
-    }, {
-      v: 'front',
-      label: 'Front door'
-    }, {
-      v: 'back',
-      label: 'Back door'
-    }, {
-      v: 'both',
-      label: 'Both'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Rooflights",
-    value: S.rooflights,
-    onPick: pick('rooflights'),
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'Not applicable'
-    }, {
-      v: '1',
-      label: '1 rooflight',
-      small: '£1,200–£2,500'
-    }, {
-      v: '2plus',
-      label: '2 or more'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 6,
-    total: TOTAL,
-    answered: s6Ans,
-    outOf: s6Of,
-    done: !!s6Done,
-    title: "Electrical",
-    info: "Partial rewire covers adding circuits, moving consumer unit, upgrading specific areas. Full rewire means every circuit is replaced and a new consumer unit installed \u2014 required in most pre-1960 properties. Finishes (sockets, switches, faceplates) are a separate choice because they vary enormously in cost.",
-    visible: !!s5Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Electrical scope",
-    value: S.electrical,
-    onPick: v => {
-      set('electrical', v);
-      if (v === 'none') set('elecFinish', 'na');
-      else if (S.elecFinish === 'na') set('elecFinish', null);
-    },
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'No change'
-    }, {
-      v: 'partial',
-      label: 'Partial rewire',
-      small: '£22–£34/m²'
-    }, {
-      v: 'full-cu',
-      label: 'Full rewire + CU',
-      small: '£42–£62/m²'
-    }]
-  }), S.electrical && S.electrical !== 'none' && /*#__PURE__*/React.createElement(Sel, {
-    label: "Electrical finishes",
-    sub: `Room count: ${calcComponents(deriveRooms(S), S.ceilingHeight).sockets} sockets · ${calcComponents(deriveRooms(S), S.ceilingHeight).switches} switches`,
-    value: S.elecFinish,
-    onPick: pick('elecFinish'),
-    cols: 2,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'MK Logic, Schneider, BG',
-      tooltip: 'White plastic sockets & switches'
-    }, {
-      v: 'premium',
-      label: 'Premium',
-      small: 'Varilight, Hamilton, Forbes & Lomax',
-      tooltip: 'Brushed brass, chrome, satin nickel'
-    }, {
-      v: 'designer',
-      label: 'Designer',
-      small: 'Buster + Punch, Lutron',
-      tooltip: 'Custom metalwork, dimmers, scene control'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 7,
-    total: TOTAL,
-    answered: s7Ans,
-    outOf: s7Of,
-    done: !!s7Done,
-    title: "Plumbing",
-    info: "This covers pipework infrastructure only \u2014 supply pipes, waste runs, heating feeds. Bathroom sanitaryware, tiling, and fitting costs are included in the Bathrooms section. Partial replumb typically covers replacing visible pipes and adding new connections. Full replumb replaces everything back to the rising main.",
-    visible: !!s6Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Plumbing scope",
-    sub: "Pipework infrastructure only. Bathroom sanitaryware and tiling are costed in the Bathrooms section.",
-    value: S.plumbing,
-    onPick: pick('plumbing'),
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'No change'
-    }, {
-      v: 'partial',
-      label: 'Partial replumb',
-      small: 'Selective circuits — hot/cold feeds to affected rooms only'
-    }, {
-      v: 'full',
-      label: 'Full replumb',
-      small: 'All hot/cold/waste pipework replaced throughout'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 8,
-    total: TOTAL,
-    answered: s8Ans,
-    outOf: s8Of,
-    done: !!s8Done,
-    title: "Mechanical",
-    info: "Boiler, heating system, ventilation, and smart home controls. Underfloor heating is costed separately from radiators \u2014 most projects use electric UFH in bathrooms and radiators elsewhere. MVHR (heat recovery ventilation) is increasingly common in full refurbs of well-sealed properties.",
-    visible: !!s7Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Boiler",
-    value: S.boiler,
-    onPick: pick('boiler'),
-    cols: 2,
-    options: [{
-      v: 'keep',
-      label: 'Keep existing'
-    }, {
-      v: 'replace',
-      label: 'Replace like-for-like'
-    }, {
-      v: 'combi',
-      label: 'New combi',
-      small: '£2,500–£4,500'
-    }, {
-      v: 'system',
-      label: 'System boiler',
-      small: '£3,200–£5,800'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Underfloor heating",
-    sub: "Electric in wet rooms only. Wet system for ground floor or whole property.",
-    value: S.ufhZone,
-    onPick: pick('ufhZone'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'None'
-    }, {
-      v: 'wet-rooms',
-      label: 'Wet rooms only',
-      small: `Electric UFH · bathrooms${S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? ' + kitchen floor' : ''} · £40–£75/m²`
-    }, ...(S.floors > 1 ? [{
-      v: 'ground-floor',
-      label: 'Ground floor only',
-      small: 'Wet UFH · ground floor · £80–£130/m²'
-    }, {
-      v: 'whole-house',
-      label: 'Whole house',
-      small: 'Wet UFH all floors · £80–£130/m²'
-    }] : [{
-      v: 'whole-house',
-      label: 'Whole property',
-      small: 'Wet UFH throughout · £80–£130/m²'
-    }])]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Ventilation",
-    value: S.ventilation,
-    onPick: pick('ventilation'),
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'None'
-    }, {
-      v: 'extractors',
-      label: 'Extractors',
-      small: '£600–£1,800'
-    }, {
-      v: 'mvhr',
-      label: 'MVHR system',
-      small: '£3,500–£12,000'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Smart home / AV",
-    value: S.smart,
-    onPick: pick('smart'),
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'None'
-    }, {
-      v: 'basic',
-      label: 'Basic',
-      small: '£1,500–£4,000'
-    }, {
-      v: 'full',
-      label: 'Full AV',
-      small: '£10,000–£25,000'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Radiators being replaced?",
-    value: S.replaceRads,
-    onPick: pick('replaceRads'),
-    cols: 2,
-    options: [{
-      v: 'yes',
-      label: 'Yes — replace radiators'
-    }, {
-      v: 'no',
-      label: 'No — keep existing'
-    }]
-  }), S.replaceRads === 'yes' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Stepper, {
-    label: "Number of radiators",
-    sub: "Count all radiators being replaced across all floors",
-    value: S.radCount,
-    onChange: v => set('radCount', v),
-    min: 0,
-    max: 40
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Radiator finish",
-    value: S.radTier,
-    onPick: pick('radTier'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: '£250–£450 each',
-      tooltip: 'Stelrad Compact, Kudox, Milano Alpha'
-    }, {
-      v: 'premium',
-      label: 'Premium',
-      small: '£500–£1,200 each',
-      tooltip: 'Bisque Classic, Vogue Neva, Zehnder Charleston'
-    }, {
-      v: 'designer',
-      label: 'Designer',
-      small: '£1,200–£3,500+ each',
-      tooltip: 'Tubes Radiatori, Bisque Arteplano, Runtal'
-    }]
-  }))), /*#__PURE__*/React.createElement(Section, {
-    num: 9,
-    total: TOTAL,
-    answered: s9Ans,
-    outOf: s9Of,
-    done: !!s9Done,
-    title: "Kitchen",
-    info: "Kitchen costs cover supply and installation of the units, worktops, and appliances. The specification tiers reflect real London market brands \u2014 Standard is Howdens/Magnet, Premium is Leicht/Tom Howley, Designer is Bulthaup/Poliform. The kitchen area is deducted from your GIA for other rate calculations.",
-    visible: !!s8Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Kitchen scope",
-    value: S.kitchenScope,
-    onPick: pick('kitchenScope'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'No kitchen'
-    }, {
-      v: 'keep',
-      label: 'Keep existing'
-    }, {
-      v: 'replace',
-      label: 'Replace kitchen'
-    }, {
-      v: 'new-layout',
-      label: 'New kitchen — new layout'
-    }]
-  }), kitActive && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Sel, {
-    label: "Kitchen specification",
-    value: S.kitTier,
-    onPick: pick('kitTier'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'Howdens, Magnet, Wren',
-      tooltip: 'Howdens, Magnet, Wickes, Wren. Laminate or quartz worktop'
-    }, {
-      v: 'premium',
-      label: 'Premium',
-      small: 'Leicht, Hacker, Nobilia',
-      tooltip: 'Leicht, Hacker, Nobilia, Tom Howley. Quartz or granite worktop'
-    }, {
-      v: 'designer',
-      label: 'Designer',
-      small: 'Bulthaup, Poliform, SieMatic',
-      tooltip: 'Bulthaup, Poliform, SieMatic, Boffi. Book-matched marble or Dekton'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Kitchen size",
-    value: S.kitSize,
-    onPick: pick('kitSize'),
-    cols: 3,
-    options: [{
-      v: 'small',
-      label: 'Small',
-      small: 'Under 8m²'
-    }, {
-      v: 'medium',
-      label: 'Medium',
-      small: '8–15m²'
-    }, {
-      v: 'large',
-      label: 'Large',
-      small: '15m²+ / open plan'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Appliances",
-    value: S.appliances,
-    onPick: pick('appliances'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'None — client supply'
-    }, {
-      v: 'standard',
-      label: 'Standard integrated',
-      small: 'Bosch / Neff'
-    }, {
-      v: 'premium',
-      label: 'Premium integrated',
-      small: 'Miele / Gaggenau'
-    }, {
-      v: 'full',
-      label: 'Fully specified',
-      small: '£15,000–£30,000+'
-    }]
-  }))), /*#__PURE__*/React.createElement(Section, {
-    num: 10,
-    total: TOTAL,
-    answered: s10Ans,
-    outOf: s10Of,
-    done: !!s10Done,
-    title: "Bathrooms",
-    info: "Each full bathroom is priced at your selected tier. The bathroom area is also deducted from GIA for structure and finishes calculations \u2014 it's not double-counted. Cloakrooms (WC and basin only) are costed separately at a lower rate.",
-    visible: !!s9Done
-  }, /*#__PURE__*/React.createElement(Stepper, {
-    label: "Full bathrooms / shower rooms",
-    sub: "Include all rooms with shower, bath, or both",
-    value: S.bathrooms,
-    onChange: v => set('bathrooms', v),
-    min: 0,
-    max: 10
-  }), S.bathrooms > 0 && /*#__PURE__*/React.createElement(Sel, {
-    label: "Bathroom specification",
-    value: S.bathTier,
-    onPick: pick('bathTier'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'Roca, Ideal Standard',
-      tooltip: 'Roca, Ideal Standard, Duravit D-Code. Grohe, Hansgrohe Focus'
-    }, {
-      v: 'premium',
-      label: 'Premium',
-      small: 'Duravit, Geberit, V&B',
-      tooltip: 'Duravit ME/Happy D.2+, Geberit, Villeroy & Boch. Hansgrohe Metropol'
-    }, {
-      v: 'designer',
-      label: 'Designer',
-      small: 'V+A, Dornbracht',
-      tooltip: 'Victoria + Albert, Bette, Laufen Kartell. Dornbracht, Fantini, CEA Design'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Freestanding bath",
-    value: S.freestandingBath,
-    onPick: pick('freestandingBath'),
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'No'
-    }, {
-      v: '1',
-      label: 'Yes — 1 bathroom',
-      small: '+£1,500–£3,500'
-    }, {
-      v: '2plus',
-      label: '2+ bathrooms',
-      small: '+£3,000–£7,000'
-    }]
-  }), /*#__PURE__*/React.createElement(Stepper, {
-    label: "Cloakrooms / separate WCs",
-    sub: "WC + basin only. Costed at your bathroom tier.",
-    value: S.cloakrooms,
-    onChange: v => set('cloakrooms', v),
-    min: 0,
-    max: 4
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 11,
-    total: TOTAL,
-    answered: s11Ans,
-    outOf: s11Of,
-    done: !!s11Done,
-    title: "Bespoke Furniture",
-    info: "Fitted wardrobes, built-in storage, home office joinery. Each 'unit' is approximately one wardrobe bay \u2014 1.5 to 2.5m wide. This does not include freestanding furniture. If you're buying off-the-shelf wardrobes (IKEA PAX etc.), select No.",
-    visible: !!s10Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Bespoke built-in furniture?",
-    value: S.bespokeFurniture,
-    onPick: pick('bespokeFurniture'),
-    cols: 2,
-    options: [{
-      v: 'yes',
-      label: 'Yes — fitted wardrobes / cupboards'
-    }, {
-      v: 'no',
-      label: 'No built-in furniture'
-    }]
-  }), S.bespokeFurniture === 'yes' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Stepper, {
-    label: "Linear metres",
-    sub: "Total run of fitted furniture \u2014 wardrobes, storage, joinery",
-    value: S.furnitureLM,
-    onChange: v => set('furnitureLM', v),
-    min: 1,
-    max: 40
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Height",
-    sub: "Floor to top of unit",
-    value: S.furnitureHeight,
-    onPick: pick('furnitureHeight'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'Up to 2.2m — below cornice line'
-    }, {
-      v: 'full',
-      label: 'Full height',
-      small: '2.4m — floor to ceiling'
-    }, {
-      v: 'tall',
-      label: 'Tall / double',
-      small: '2.7m+ or double-height units'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Furniture specification",
-    value: S.furnitureTier,
-    onPick: pick('furnitureTier'),
-    cols: 3,
-    options: [{
-      v: 'standard',
-      label: 'Standard',
-      small: 'MDF, spray-painted',
-      tooltip: 'Moisture-resistant MDF, spray-finished'
-    }, {
-      v: 'premium',
-      label: 'Premium',
-      small: 'Laminated, soft-close, LEDs',
-      tooltip: 'Egger/Kronospan board, veneered MDF, soft-close drawers'
-    }, {
-      v: 'designer',
-      label: 'Designer',
-      small: 'Veneer, glass, bespoke metal',
-      tooltip: 'Veneered solid panels, glass shelving, integrated LED, push-to-open'
-    }]
-  }))), /*#__PURE__*/React.createElement(Section, {
-    num: 12,
-    total: TOTAL,
-    answered: s12Ans,
-    outOf: s12Of,
-    done: !!s12Done,
-    title: "Finishes",
-    info: "Flooring, decoration, and skirtings \u2014 costed against your actual floor and wall area, not just GIA. Decoration rates are applied to inferred wall area based on your layout and ceiling height. Bespoke wall treatments include specialist paint, panelling, fabric, or wallcoverings.",
-    visible: !!s11Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "Flooring",
-    value: S.flooring,
-    onPick: pick('flooring'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'No change'
-    }, {
-      v: 'eng-wood',
-      label: 'Engineered wood',
-      small: '£48–£125/m²'
-    }, {
-      v: 'solid-wood',
-      label: 'Solid wood',
-      small: '£85–£185/m²'
-    }, {
-      v: 'mixed',
-      label: 'Mixed — wood + tile'
-    }, {
-      v: 'lvt',
-      label: 'LVT',
-      small: '£35–£90/m²'
-    }, {
-      v: 'carpet',
-      label: 'Carpet in bedrooms',
-      small: '£22–£60/m²'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Decoration",
-    value: S.decoration,
-    onPick: pick('decoration'),
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'No change'
-    }, {
-      v: 'repaint',
-      label: 'Full repaint',
-      small: '£25–£40/m²'
-    }, {
-      v: 'repaint-feature',
-      label: 'Repaint + features',
-      small: '£42–£68/m²'
-    }, {
-      v: 'bespoke',
-      label: 'Bespoke wall treatments',
-      small: '£70–£125/m²'
-    }]
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Skirtings & architraves",
-    value: S.skirtings,
-    onPick: pick('skirtings'),
-    cols: 3,
-    options: [{
-      v: 'keep',
-      label: 'Keep existing'
-    }, {
-      v: 'standard',
-      label: 'Standard profile',
-      small: '£26–£44/lm'
-    }, {
-      v: 'bespoke',
-      label: 'Bespoke profile',
-      small: '£52–£105/lm'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 13,
-    total: TOTAL,
-    answered: s13Ans,
-    outOf: s13Of,
-    done: !!s13Done,
-    title: "Structural Works",
-    info: "Alterations to the primary structure: walls, loft conversions, extensions, basement works. Selecting any structural work increases the contingency rate from 15% to 18% \u2014 structural projects carry higher discovery risk. Extension and loft costs activate once you enter the area in m\xB2.",
-    visible: !!s12Done
-  }, /*#__PURE__*/React.createElement(MultiSel, {
-    label: "Select all that apply",
-    values: S.structural,
-    onToggle: toggleStruct,
-    cols: 2,
-    options: [{
-      v: 'none',
-      label: 'None'
-    }, {
-      v: 'walls',
-      label: 'Wall removal(s)',
-      small: 'Inc. RSJ + making good'
-    }, {
-      v: 'loft',
-      label: 'Loft conversion'
-    }, {
-      v: 'extension',
-      label: 'Extension'
-    }, {
-      v: 'basement',
-      label: 'Basement'
-    }]
-  }), S.structural.includes('loft') && /*#__PURE__*/React.createElement(NumInput, {
-    label: "Loft conversion area",
-    value: S.loftRaw,
-    onChange: v => set('loftRaw', v),
-    unit: S.loftUnit,
-    onUnitChange: v => set('loftUnit', v)
-  }), S.structural.includes('extension') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(NumInput, {
-    label: "Extension area",
-    value: S.extRaw,
-    onChange: v => set('extRaw', v),
-    unit: S.extUnit,
-    onUnitChange: v => set('extUnit', v)
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Storeys",
-    value: S.storeys,
-    onPick: pick('storeys'),
-    cols: 2,
-    options: [{
-      v: 'single',
-      label: 'Single storey'
-    }, {
-      v: 'double',
-      label: 'Double storey'
-    }]
-  })), S.structural.includes('basement') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(NumInput, {
-    label: "Basement area",
-    value: S.basRaw,
-    onChange: v => set('basRaw', v),
-    unit: S.basUnit,
-    onUnitChange: v => set('basUnit', v)
-  }), /*#__PURE__*/React.createElement(Sel, {
-    label: "Basement type",
-    value: S.basType,
-    onPick: pick('basType'),
-    cols: 2,
-    options: [{
-      v: 'fitout',
-      label: 'Fit-out of existing'
-    }, {
-      v: 'excavation',
-      label: 'New excavation'
-    }]
-  }))), /*#__PURE__*/React.createElement(Section, {
-    num: 14,
-    total: TOTAL,
-    answered: s14Ans,
-    outOf: s14Of,
-    done: !!s14Done,
-    title: "External Works",
-    info: "Garden landscaping and fa\xE7ade repairs sit outside the main build contract but are commonly scoped at the same time. Garden costs are driven by size and specification. Fa\xE7ade includes repointing, render, stonework \u2014 not painting, which is in finishes.",
-    visible: !!s12Done
-  }, /*#__PURE__*/React.createElement(MultiSel, {
-    label: "Select all that apply",
-    values: S.external,
-    onToggle: toggleExt,
-    cols: 3,
-    options: [{
-      v: 'none',
-      label: 'None'
-    }, {
-      v: 'garden',
-      label: 'Garden / landscaping'
-    }, {
-      v: 'facade',
-      label: 'Façade repairs',
-      small: '£10,000–£25,000'
-    }]
-  }), gardenSelected && /*#__PURE__*/React.createElement(Sel, {
-    label: "Garden size",
-    sub: "Indicative m\xB2 \u2014 drives landscaping budget",
-    value: S.gardenSize,
-    onPick: pick('gardenSize'),
-    cols: 3,
-    options: [{
-      v: 'small',
-      label: 'Small garden',
-      small: 'Up to 60m² · £7,200–£12,000'
-    }, {
-      v: 'medium',
-      label: 'Medium garden',
-      small: '60–120m² · £12,000–£20,400'
-    }, {
-      v: 'large',
-      label: 'Large garden',
-      small: '120m²+ · £18,700–£31,900'
-    }]
-  })), /*#__PURE__*/React.createElement(Section, {
-    num: 15,
-    total: TOTAL,
-    answered: s15Ans,
-    outOf: s15Of,
-    done: !!s15Done,
-    title: "Programme & Fees",
-    info: "Statutory fees cover building control, party wall surveyors, listed building consent applications, and licence to alter where applicable. These are calculated automatically from your inputs and are not optional \u2014 they're legal requirements.",
-    visible: !!s12Done
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.25)',
-      marginBottom: 12,
-      lineHeight: 1.7
-    }
-  }, "Statutory fees calculated automatically from your inputs. They are not optional."), /*#__PURE__*/React.createElement(Sel, {
-    label: "Programme priority",
-    value: S.programme,
-    onPick: pick('programme'),
-    cols: 2,
-    options: [{
-      v: 'flexible',
-      label: 'Flexible — no fixed date'
-    }, {
-      v: 'target',
-      label: 'I have a target move-in date'
-    }]
-  }), S.programme === 'target' && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: 500,
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.5)',
-      marginBottom: 8,
-      textTransform: 'uppercase'
-    }
-  }, "Preferred start date"), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: S.targetDate,
-    onChange: e => set('targetDate', e.target.value),
-    style: {
-      height: 44,
-      border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: 4,
-      padding: '0 14px',
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 14,
-      color: 'var(--white)',
-      background: 'rgba(255,255,255,0.03)',
-      outline: 'none',
-      colorScheme: 'dark',
-      minWidth: 200
-    },
-    onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.4)',
-    onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'
-  }), !S.targetDate && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(235,83,36,0.6)',
-      marginTop: 6
-    }
-  }, "Required for report generation."))), /*#__PURE__*/React.createElement(Section, {
-    num: 16,
-    total: TOTAL,
-    answered: s16Ans,
-    outOf: s16Of,
-    done: !!s16Done,
-    title: "Purpose of This Estimate",
-    info: "This doesn't affect the numbers \u2014 it helps us understand where you are in the process so we can give you the most useful next step. Whether you're ready to start tomorrow or just running numbers on a potential purchase, the estimate is the same. What changes is what we do next.",
-    visible: !!s15Done
-  }, /*#__PURE__*/React.createElement(Sel, {
-    label: "What best describes where you are right now?",
-    value: S.purpose,
-    onPick: pick('purpose'),
-    cols: 2,
-    options: [{
-      v: 'ready',
-      label: 'Ready to start',
-      small: 'Project confirmed — looking for the right contractor'
-    }, {
-      v: 'planning',
-      label: 'Planning ahead',
-      small: 'Project confirmed — building the budget before going to market'
-    }, {
-      v: 'purchasing',
-      label: 'Considering a purchase',
-      small: 'Stress-testing renovation cost before making an offer'
-    }, {
-      v: 'exploring',
-      label: 'Just exploring',
-      small: 'No confirmed project — curious what it would cost'
-    }]
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'sticky',
-      top: 80,
-      maxHeight: 'calc(100vh - 100px)',
-      overflowY: 'auto',
-      scrollbarWidth: 'none'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      marginBottom: 7
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 2,
-      color: 'rgba(255,255,255,0.25)',
-      textTransform: 'uppercase'
-    }
-  }, "Progress"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 1.5,
-      color: 'var(--teal)',
-      fontWeight: 500
-    }
-  }, progress, " / ", TOTAL)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: 2,
-      background: 'rgba(255,255,255,0.05)',
-      borderRadius: 1
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      height: '100%',
-      background: 'var(--teal)',
-      borderRadius: 1,
-      width: `${progress / TOTAL * 100}%`,
-      transition: 'width 500ms ease',
-      boxShadow: '0 0 8px rgba(0,151,141,0.5)'
-    }
-  }))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: 'rgba(255,255,255,0.04)',
-      border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: 8,
-      overflow: 'hidden',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '10px 16px',
-      background: 'rgba(255,255,255,0.03)',
-      borderBottom: '1px solid rgba(255,255,255,0.07)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6
-    }
-  }, [0, 1, 2].map(i => /*#__PURE__*/React.createElement("span", {
-    key: i,
-    style: {
-      width: 7,
-      height: 7,
-      borderRadius: '50%',
-      background: 'rgba(255,255,255,0.08)'
-    }
-  }))), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 2,
-      color: 'rgba(255,255,255,0.2)',
-      textTransform: 'uppercase'
-    }
-  }, "MG-CALC-V5"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 2,
-      color: showResult || isCalculating ? 'var(--teal)' : 'rgba(255,255,255,0.2)',
-      textTransform: 'uppercase'
-    }
-  }, showResult ? 'LIVE' : (isCalculating ? 'CALCULATING' : 'STANDBY'))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '22px 20px 18px',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
-      position: 'relative',
-      overflow: 'hidden'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: -50,
-      right: -50,
-      width: 180,
-      height: 180,
-      background: 'radial-gradient(circle,rgba(0,151,141,0.07) 0%,transparent 70%)',
-      pointerEvents: 'none'
-    }
-  }), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 2.5,
-      color: 'var(--teal)',
-      textTransform: 'uppercase',
-      marginBottom: 14
-    }
-  }, "Live estimate \xB7 ex. VAT"),
-    /* CRIT-03: structural-only with no real items — explicit gate message */
-    (showResult && est === null && S.scope === 'structural-only' && (!S.structural || S.structural.length === 0 || S.structural.every(x => x === 'none'))) ? /*#__PURE__*/React.createElement("div", {
-      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.25)', padding: '20px 0', textAlign: 'center', lineHeight: 1.6 }
-    }, "Select at least one structural item before we can show a range.") :
-    /* MED-02: kit-bath with no kitchen/bath/cloak — explicit gate message */
-    (showResult && est === null && S.scope === 'kit-bath' && (S.kitchenScope === 'none' || !S.kitchenScope) && (S.bathrooms || 0) === 0 && (S.cloakrooms || 0) === 0) ? /*#__PURE__*/React.createElement("div", {
-      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.25)', padding: '20px 0', textAlign: 'center', lineHeight: 1.6 }
-    }, "You've selected kitchen & bathroom but haven't chosen either. Pick at least one.") :
-    (isCalculating || estLoading) ? /*#__PURE__*/React.createElement("div", { className: "calc-spinner" }, /*#__PURE__*/React.createElement("div", { className: "calc-spinner-ring" }), /*#__PURE__*/React.createElement("div", { className: "calc-spinner-text" }, "Processing")) : estError ? /*#__PURE__*/React.createElement("div", { style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0', textAlign: 'center' } }, estError) :
-    /* HIGH-01: ceiling cap CTA (replaces figures when high > £3M) */
-    (showResult && est && est.ceilingCapped === true) ? /*#__PURE__*/React.createElement(React.Fragment, null,
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 18, lineHeight: 1.6, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }
-      }, "This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement."),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 18 }
-      }, "At this scale, a parametric estimate is indicative at best."),
-      /*#__PURE__*/React.createElement("a", {
-        href: "https://calendly.com/team-myrmexgroup/30min",
-        target: "_blank",
-        rel: "noopener noreferrer",
-        style: {
-          display: 'block',
-          padding: '13px 0',
-          border: '1px solid var(--teal)',
-          borderRadius: 4,
-          fontFamily: 'Space Grotesk,sans-serif',
-          fontWeight: 600,
-          fontSize: 13,
-          color: 'var(--teal)',
-          textAlign: 'center',
-          textDecoration: 'none',
-          letterSpacing: 1,
-          textTransform: 'uppercase'
-        }
-      }, "BOOK A CALL")
-    ) :
-    showResult && est ? /*#__PURE__*/React.createElement(React.Fragment, null,
-    /* CRIT-04: disclaimer moved ABOVE the figures, raised to 13px, white-tinted */
-    /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 13,
-      color: 'rgba(255,255,255,0.5)',
-      marginBottom: 14,
-      lineHeight: 1.6,
-      paddingBottom: 12,
-      borderBottom: '1px solid rgba(255,255,255,0.05)'
-    }
-  }, "This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 11,
-      color: 'rgba(255,255,255,0.3)',
-      marginBottom: 4
-    }
-  }, "LOW \xA0 ", fmt(est.low)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 28,
-      fontWeight: 500,
-      color: 'var(--teal)',
-      lineHeight: 1.1,
-      textShadow: '0 0 24px rgba(0,151,141,0.3)'
-    }
-  }, fmt(est.mid)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 11,
-      color: 'rgba(255,255,255,0.3)',
-      marginTop: 4
-    }
-  }, "HIGH ", fmt(est.high)), est.timeline && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 16,
-      paddingTop: 14,
-      borderTop: '1px solid rgba(255,255,255,0.05)'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'Orbitron,sans-serif',
-      fontSize: 9,
-      letterSpacing: 2,
-      color: 'rgba(255,255,255,0.25)',
-      textTransform: 'uppercase',
-      marginBottom: 6
-    }
-  }, "Programme estimate"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 20,
-      fontWeight: 500,
-      color: 'var(--white)'
-    }
-  }, fmtW(est.timeline.grandTotal.weeks)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.2)',
-      marginTop: 3
-    }
-  }, "total from today \xB7 inc. pre-construction"),
-    /* HIGH-09: programme caveat */
-    /*#__PURE__*/React.createElement("div", {
-      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 6, fontStyle: 'italic' }
-    }, "Preliminary programme only. Confirmed during PCSA."))) : /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 26,
-      color: 'rgba(255,255,255,0.08)',
-      letterSpacing: 3,
-      paddingBottom: 8
-    }
-  }, "\u2014\u2014")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: '16px 20px 20px'
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => ready && setShowModal(true),
-    style: {
-      width: '100%',
-      padding: '13px 0',
-      background: ready ? 'var(--orange)' : 'rgba(255,255,255,0.04)',
-      border: `1px solid ${ready ? 'var(--orange)' : 'rgba(255,255,255,0.07)'}`,
-      borderRadius: 4,
-      fontFamily: 'Space Grotesk,sans-serif',
-      fontWeight: 600,
-      fontSize: 12,
-      color: ready ? 'var(--white)' : 'rgba(255,255,255,0.18)',
-      cursor: ready ? 'pointer' : 'default',
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-      transition: 'all 150ms'
-    },
-    onMouseEnter: e => {
-      if (ready) e.target.style.background = '#C94420';
-    },
-    onMouseLeave: e => {
-      if (ready) e.target.style.background = 'var(--orange)';
-    }
-  }, "SEND ME FULL BREAKDOWN"), !ready && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.18)',
-      textAlign: 'center',
-      marginTop: 9
-    }
-  }, !allDone ? "Complete all sections to unlock." : "Select a start date to unlock."))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 8
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => {
-      var _S$zone3, _S$lastRefurb;
-      if (!est || !allDone || (S.programme === 'target' && !S.targetDate)) return;
-      // Phase 4: breakdown comes from the API response (est.breakdown), not a client compute.
-      // Server-side calcDetailedBreakdown ran when /api/estimate was called.
-      const bd = est.breakdown;
-      if (!bd) return;
-      const fmtM = n => n > 0 ? '£' + Math.round(n).toLocaleString('en-GB') : '—';
-      const rng = ([lo, hi]) => '£' + Math.round(lo).toLocaleString('en-GB') + ' – ' + '£' + Math.round(hi).toLocaleString('en-GB');
-      const mid = ([lo, hi]) => Math.round((lo + hi) / 2);
-      const propLabel = {
-        'period-house': 'Period House',
-        'period-flat': 'Period Flat / Maisonette',
-        'newbuild-house': 'New-build House',
-        'newbuild-flat': 'New-build Flat'
-      }[S.propertyType] || S.propertyType || '—';
-      const sectionHTML = bd.sections.map(sec => {
-        const secMid = mid(sec.total);
-        const secLo = sec.total[0];
-        const secHi = sec.total[1];
-        const variance = Math.round((secHi - secLo) / 2);
-        if (secMid === 0 && sec.lines.length === 0) return '';
-        const linesHTML = sec.lines.map(l => `
-                  <tr>
-                    <td style="padding:8px 12px;font-size:12px;color:#374151;border-bottom:1px solid #F3F4F6">${l.label}<br><span style="font-size:11px;color:#9CA3AF">${l.note}</span></td>
-                    <td style="padding:8px 12px;font-size:13px;font-family:IBM Plex Mono,monospace;color:#111827;text-align:right;border-bottom:1px solid #F3F4F6;white-space:nowrap">${fmtM(l.value)}</td>
-                  </tr>`).join('');
-        return `
-                  <div style="margin-bottom:28px;break-inside:avoid">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:10px 12px;background:#F8FAFC;border-left:3px solid #00978D;margin-bottom:0">
-                      <span style="font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;color:#051230;text-transform:uppercase;letter-spacing:0.5px">${sec.title}</span>
-                      <div style="text-align:right">
-                        <div style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:500;color:#051230">${fmtM(secMid)}</div>
-                        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#6B7280">Range: ${rng(sec.total)} · ±${fmtM(variance)}</div>
-                      </div>
-                    </div>
-                    ${sec.lines.length > 0 ? `<table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB;border-top:none">${linesHTML}</table>` : '<div style="padding:8px 12px;font-size:11px;color:#9CA3AF;font-family:IBM Plex Mono,monospace;border:1px solid #E5E7EB;border-top:none">Included in estimate — no further sub-division at this stage.</div>'}
-                  </div>`;
-      }).join('');
-      const progHTML = bd.programme.map(p => `
-                <tr style="${p.isHeader ? 'background:#F0FDF9' : ''}">
-                  <td style="padding:${p.isHeader ? '10' : '7'}px 12px;font-size:${p.isHeader ? '11' : '12'}px;font-weight:${p.isHeader ? '600' : '400'};color:${p.isHeader ? '#00786E' : '#374151'};font-family:${p.isHeader ? 'Space Grotesk,sans-serif' : 'inherit'};text-transform:${p.isHeader ? 'uppercase' : 'none'};letter-spacing:${p.isHeader ? '0.5' : '0'}px;border-bottom:1px solid #F3F4F6">${p.phase}${p.note ? '<br><span style=\'font-size:10px;color:#9CA3AF;font-family:inherit;font-weight:400;text-transform:none\'>' + p.note + '</span>' : ''}</td>
-                  <td style="padding:${p.isHeader ? '10' : '7'}px 12px;font-family:IBM Plex Mono,monospace;font-size:${p.isHeader ? '13' : '12'}px;font-weight:${p.isHeader ? '600' : '400'};color:${p.isAccent ? '#00978D' : p.isHeader ? '#051230' : '#374151'};text-align:right;border-bottom:1px solid #F3F4F6;white-space:nowrap">${p.weeks}</td>
-                </tr>`).join('');
-      const driversHTML = bd.varianceDrivers.map((d, i) => `
-                <div style="display:flex;gap:12px;margin-bottom:12px">
-                  <div style="width:20px;height:20px;border-radius:50%;background:#E6F5F4;display:flex;align-items:center;justify-content:center;font-family:IBM Plex Mono,monospace;font-size:10px;color:#00978D;font-weight:500;flex-shrink:0;margin-top:2px">${i + 1}</div>
-                  <p style="font-size:13px;color:#374151;line-height:1.6;margin:0">${d}</p>
-                </div>`).join('');
-      const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Budget Estimate — Myrmex Group · ${bd.ref}<\/title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Space Grotesk,sans-serif;color:#111827;background:#fff;font-size:14px;line-height:1.5}
-@media print{.no-print{display:none!important}body{font-size:12px}h1{font-size:22px}}
-<\/style>
-<\/head>
-<body>
-<div style="max-width:820px;margin:0 auto;padding:48px 40px">
-
-  <!-- Header -->
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:24px;border-bottom:2px solid #051230;margin-bottom:32px">
-    <div>
-      <div style="font-family:Space Grotesk,sans-serif;font-weight:700;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#00978D;margin-bottom:8px">Myrmex Group</div>
-      <h1 style="font-weight:300;font-size:26px;color:#051230;line-height:1.2;margin-bottom:4px">Budget Estimate</h1>
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#9CA3AF">${bd.ref} · Generated ${bd.generatedAt} · Ex. VAT</div>
-    </div>
-    <div style="text-align:right">
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#9CA3AF;margin-bottom:4px">Most likely outcome</div>
-      <div style="font-family:IBM Plex Mono,monospace;font-size:28px;font-weight:500;color:#051230">£${Math.round(bd.midpoint).toLocaleString('en-GB')}</div>
-      <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:#6B7280;margin-top:2px">Range: ${rng(bd.grandTotal)}</div>
-    </div>
-  </div>
-
-  <!-- Project summary -->
-  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px">
-    ${[['Property', propLabel], ['Location', ((_S$zone3 = S.zone) === null || _S$zone3 === void 0 ? void 0 : _S$zone3.toUpperCase()) || '—'], ['GIA', `${S.giaRaw}${S.giaUnit === 'sqft' ? 'sq ft' : 'm²'}`], ['Scope', S.scope === 'full' ? 'Full refurb' : S.scope === 'partial' ? 'Selected rooms' : S.scope === 'kit-bath' ? 'Kit + bath' : 'Structural'], ['Bedrooms', `${S.bedrooms}`], ['Bathrooms', `${S.bathrooms}`], ['Floors', `${S.floors}`], ['Last refurb', ((_S$lastRefurb = S.lastRefurb) === null || _S$lastRefurb === void 0 ? void 0 : _S$lastRefurb.replace('20plus', '20+ yrs').replace('10to20', '10–20 yrs').replace('5to10', '5–10 yrs')) || '—']].map(([k, v]) => `<div style="padding:12px;background:#F8FAFC;border-radius:4px"><div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">${k}</div><div style="font-weight:500;font-size:13px;color:#051230">${v}</div></div>`).join('')}
-  </div>
-
-  <!-- Cost sections -->
-  <div style="margin-bottom:32px">
-    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">Cost Breakdown — Midpoints at Line Level</h2>
-    ${sectionHTML}
-  </div>
-
-  <!-- Contingency -->
-  <div style="margin-bottom:32px;padding:16px;background:#F0FDF9;border:1.5px solid #00978D;border-radius:4px">
-    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
-      <div>
-        <div style="font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;color:#051230;text-transform:uppercase;letter-spacing:0.5px">Contingency — ${Math.round(bd.contingency.rate * 100)}%</div>
-        <div style="font-size:12px;color:#374151;margin-top:2px">${bd.contingency.reason}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:IBM Plex Mono,monospace;font-size:15px;font-weight:500;color:#00978D">${fmtM(bd.contingency.mid)}</div>
-        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#6B7280">Range: ${rng(bd.contingency.total)}</div>
-      </div>
-    </div>
-    <p style="font-size:12px;color:#374151;line-height:1.6">Contingency is shown separately and not hidden inside individual line items. It is a named, contractual buffer — not a margin. The PCSA stage converts this estimate into a fixed-price contract, at which point contingency is re-assessed against a confirmed specification.</p>
-  </div>
-
-  <!-- Grand total -->
-  <div style="margin-bottom:40px;padding:20px;background:#051230;border-radius:4px">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-family:IBM Plex Mono,monospace;font-size:10px;letter-spacing:2px;color:#00978D;text-transform:uppercase;margin-bottom:6px">Total Estimate · Ex. VAT</div>
-        <div style="font-family:IBM Plex Mono,monospace;font-size:11px;color:rgba(255,255,255,0.4)">Range: ${rng(bd.grandTotal)}</div>
-      </div>
-      <div style="font-family:IBM Plex Mono,monospace;font-size:30px;font-weight:500;color:#fff">£${Math.round(bd.midpoint).toLocaleString('en-GB')}</div>
-    </div>
-  </div>
-
-  <!-- Programme -->
-  ${bd.programme.length > 0 ? `
-  <div style="margin-bottom:40px">
-    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:20px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">Programme Estimate</h2>
-    <table style="width:100%;border-collapse:collapse;border:1px solid #E5E7EB">
-      ${progHTML}
-    </table>
-    <p style="font-size:11px;color:#9CA3AF;margin-top:8px;font-family:IBM Plex Mono,monospace">Pre-construction gates run in parallel — the longest governs. Programme assumes continuous contractor engagement and no client-side delays.</p>
-  </div>` : ''}
-
-  <!-- Variance drivers -->
-  <div style="margin-bottom:40px">
-    <h2 style="font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#051230;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #E5E7EB">What Drives the Variance in This Estimate</h2>
-    ${driversHTML}
-  </div>
-
-  <!-- Footer / CTA -->
-  <div style="padding:24px;background:#F8FAFC;border-radius:4px;text-align:center;border:1px solid #E5E7EB">
-    <div style="font-weight:600;font-size:16px;color:#051230;margin-bottom:8px">The PCSA stage is how this range becomes a fixed price.</div>
-    <p style="font-size:13px;color:#374151;line-height:1.6;margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto">A Pre-Construction Services Agreement gives us access to your property to survey, specify, and confirm every element before committing to a contract price. No obligation to proceed. Full transparency on methodology.</p>
-    <a href="#" style="display:inline-block;padding:12px 32px;background:#EB5324;color:#fff;font-family:Space Grotesk,sans-serif;font-weight:600;font-size:13px;text-decoration:none;border-radius:3px;letter-spacing:0.5px">LET'S DO IT — Book a Call</a>
-  </div>
-
-  <div style="margin-top:32px;padding-top:16px;border-top:1px solid #E5E7EB;display:flex;justify-content:space-between">
-    <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF">Myrmex Group · Central London Residential Renovation</div>
-    <div style="font-family:IBM Plex Mono,monospace;font-size:10px;color:#9CA3AF">${bd.ref} · This estimate is indicative and subject to survey</div>
-  </div>
-
-</div>
-<div class="no-print" style="position:fixed;bottom:20px;right:20px">
-  <button onclick="window.print()" style="padding:10px 20px;background:#051230;color:#fff;border:none;border-radius:4px;font-family:Space Grotesk,sans-serif;font-weight:500;font-size:13px;cursor:pointer">Print / Save as PDF</button>
-</div>
-<\/body><\/html>`;
-      const w = window.open('', '_blank');
-      w.document.write(html);
-      w.document.close();
-    },
-    style: {
-      // Dev-only preview button — hidden in production per request
-      display: 'none',
-      width: '100%',
-      padding: '10px 0',
-      marginTop: 0,
-      background: 'rgba(235,83,36,0.08)',
-      border: '1px dashed rgba(235,83,36,0.3)',
-      borderRadius: 4,
-      fontFamily: 'Orbitron,sans-serif',
-      fontWeight: 500,
-      fontSize: 9,
-      color: 'rgba(235,83,36,0.6)',
-      cursor: ready ? 'pointer' : 'default',
-      letterSpacing: 2,
-      textTransform: 'uppercase',
-      transition: 'all 150ms'
-    },
-    onMouseEnter: e => {
-      if (ready) {
-        e.target.style.background = 'rgba(235,83,36,0.14)';
-        e.target.style.color = 'rgba(235,83,36,0.9)';
-      }
-    },
-    onMouseLeave: e => {
-      e.target.style.background = 'rgba(235,83,36,0.08)';
-      e.target.style.color = 'rgba(235,83,36,0.6)';
-    }
-  }, "\u2B07 DEV \u2014 View Full Report")))));
+    ) // end grid
+  );
 }
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(/*#__PURE__*/React.createElement(Calculator, null));
 
-// Report content height to parent so iframe auto-sizes tightly
-(function(){
-  var last = 0;
-  function send(){
-    var h = document.documentElement.scrollHeight;
-    if(h !== last){ last = h; window.parent.postMessage({type:'mg-calc:height', height: h}, '*'); }
-  }
-  if(window.ResizeObserver){
-    new ResizeObserver(send).observe(document.body);
-  } else {
-    setInterval(send, 500);
-  }
-  send();
+ReactDOM.createRoot(document.getElementById('calc-root')).render(e(Calculator));
 })();
-
 </script>
+
 </body>
 </html>
