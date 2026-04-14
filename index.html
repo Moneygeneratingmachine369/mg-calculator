@@ -86,33 +86,31 @@ async function getToken() {
   return _token;
 }
 
-let _debounceTimer = null;
-
-function fetchEstimate(S, setEstimate, setLoading, setError) {
+// Estimate fetch is now a one-shot, fired only after all 16 sections are
+// answered (see the useEffect in Calculator()). No debounce — a real user
+// triggers 1-2 requests per session at most.
+async function fetchEstimate(S, setEstimate, setLoading, setError) {
   setLoading(true);
   setError(null);
-  clearTimeout(_debounceTimer);
-  _debounceTimer = setTimeout(async () => {
-    try {
-      const token = await getToken();
-      const res = await fetch(`${API_BASE}/api/estimate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-MG-Token': token },
-        credentials: 'omit',
-        body: JSON.stringify(S)
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      // /api/estimate may return { estimate: null } for incomplete inputs.
-      // Otherwise the body IS the estimate object.
-      setEstimate(data && data.estimate !== undefined ? data.estimate : data);
-      setLoading(false);
-    } catch (err) {
-      console.error('Estimate fetch error:', err);
-      setError('Estimate unavailable');
-      setLoading(false);
-    }
-  }, 450);
+  try {
+    const token = await getToken();
+    const res = await fetch(`${API_BASE}/api/estimate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-MG-Token': token },
+      credentials: 'omit',
+      body: JSON.stringify(S)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    // /api/estimate may return { estimate: null } for incomplete inputs.
+    // Otherwise the body IS the estimate object.
+    setEstimate(data && data.estimate !== undefined ? data.estimate : data);
+    setLoading(false);
+  } catch (err) {
+    console.error('Estimate fetch error:', err);
+    setError('Estimate unavailable');
+    setLoading(false);
+  }
 }
 
 // ── Display formatters ───────────────────────────────────────
@@ -992,18 +990,12 @@ function Calculator() {
     });
   }, []);
   // Phase 4: server-side estimate via /api/estimate.
-  // CRITICAL — dependency is JSON.stringify(S), NOT S itself. S is a fresh object
-  // every render; reference equality would fire the effect on every render and
-  // produce a fetch→setState→render→fetch cascade that the 450ms debounce
-  // only partially contains. Serialising 71 keys takes microseconds.
+  // One-shot fetch: fires only when all 16 sections are complete (see the
+  // useEffect below `allDone`). Pre-completion, the estimate panel shows the
+  // "——" placeholder. Post-completion changes re-fetch once (no debounce).
   const [est, setEst] = useState(null);
   const [estLoading, setEstLoading] = useState(false);
   const [estError, setEstError] = useState(null);
-  const sKey = JSON.stringify(S);
-  useEffect(() => {
-    fetchEstimate(S, setEst, setEstLoading, setEstError);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sKey]);
   const TOTAL = 16;
   const isFlat = ['period-flat', 'newbuild-flat'].includes(S.propertyType);
   const isHouse = ['period-house', 'newbuild-house'].includes(S.propertyType);
@@ -1032,6 +1024,24 @@ function Calculator() {
   const s16Done = !s15Done ? false : S.purpose !== null;
   const allDone = !!(s1Done && s2Done && s3Done && s4Done && s5Done && s6Done && s7Done && s8Done && s9Done && s10Done && s11Done && s12Done && s13Done && s14Done && s15Done && s16Done);
   const ready = est && allDone && (S.programme !== 'target' || S.targetDate);
+
+  // One-shot /api/estimate fetch: fires only when all 16 sections are complete.
+  // Pre-completion: panel shows "——" placeholder, no network activity.
+  // Post-completion state changes re-fetch (dependency sKey), no debounce —
+  // a real user triggers 1-2 requests per session at most.
+  // If sections become incomplete again (user un-answers a field), clear est
+  // so stale figures don't leak into the sidebar.
+  const sKey = JSON.stringify(S);
+  useEffect(() => {
+    if (allDone) {
+      fetchEstimate(S, setEst, setEstLoading, setEstError);
+    } else {
+      setEst(null);
+      setEstError(null);
+      setEstLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allDone, sKey]);
 
   // Field-level progress — each answered field counts, gives immediate feedback
   // Section-completion progress
