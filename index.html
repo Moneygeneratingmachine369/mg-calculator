@@ -19,7 +19,7 @@
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
-body { font-family: var(--font-body); font-weight: 400; color: var(--white); background: var(--dark-base); }
+body { font-family: var(--font-body); font-weight: 400; color: var(--white); background: transparent; }
 .modal-overlay {
   position: fixed; inset: 0; z-index: 500;
   background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
@@ -36,1737 +36,91 @@ input[type=number] { -moz-appearance:textfield; }
 ::-webkit-scrollbar { width:4px; } ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
 button { -webkit-font-smoothing:antialiased; }
+@keyframes calcSpin { to { transform: rotate(360deg); } }
+@keyframes calcPulse { 0%,100% { opacity:0.3; } 50% { opacity:1; } }
+.calc-spinner { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 0 16px; }
+.calc-spinner-ring { width:36px; height:36px; border:2px solid rgba(0,151,141,0.15); border-top-color:var(--teal); border-radius:50%; animation:calcSpin 1s linear infinite; }
+.calc-spinner-text { font-family:'Orbitron',sans-serif; font-size:9px; letter-spacing:2px; color:var(--teal); text-transform:uppercase; margin-top:14px; animation:calcPulse 1.5s ease infinite; }
 .questions-card { overflow: visible !important; }
 .section-header { position: -webkit-sticky; position: sticky; top: 0px; z-index: 10; background: rgba(8,8,14,0.97); }
 </style>
 </head>
 <body>
+<noscript>
+  <p style="font-family: 'Space Grotesk', sans-serif; color: #FFFFFF; padding: 40px; text-align: center; font-size: 16px; line-height: 1.6; margin: 0;">
+    This calculator needs JavaScript to run.<br>
+    <a href="/start" style="color: #00978D; text-decoration: underline;">Send us your details</a> and we'll prepare your estimate.
+  </p>
+</noscript>
 <div id="root"></div>
 <script>
 const {
   useState,
   useCallback,
-  useMemo
+  useMemo,
+  useRef,
+  useEffect
 } = React;
 
-// ── PRICING CONSTANTS ─────────────────────────────────────────
-const PRELIMS = {
-  z1: {
-    full: [12000, 22000],
-    partial: [6000, 13000],
-    'kit-bath': [3500, 7000],
-    'structural-only': [7000, 15000]
-  },
-  z2: {
-    full: [6000, 14000],
-    partial: [3000, 8000],
-    'kit-bath': [2000, 4500],
-    'structural-only': [4000, 10000]
-  },
-  z3: {
-    full: [4500, 10000],
-    partial: [2500, 6000],
-    'kit-bath': [1500, 3500],
-    'structural-only': [3000, 8000]
-  },
-  'z4-6': {
-    full: [3500, 8000],
-    partial: [2000, 5000],
-    'kit-bath': [1200, 3000],
-    'structural-only': [2500, 6000]
-  }
-};
-const FLOOR_MOD_P = {
-  1: 1,
-  2: 1.03,
-  3: 1.07,
-  4: 1.12,
-  5: 1.18
-};
-const FLOOR_MOD_S = {
-  1: 1,
-  2: 1.03,
-  3: 1.06,
-  4: 1.10,
-  5: 1.14
-};
-const ACCESS_MOD = {
-  easy: 1,
-  moderate: 1.08,
-  difficult: 1.18
-};
-// Demolition — dynamic by GIA, floors, property type, condition
-// partial = targeted strip (specific rooms/areas)
-// cosmetic = surface finishes only, no services exposure
-function calcDemo(scope, S) {
-  if (!scope || scope === 'cosmetic') return [0, 0];
-  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
-  const floors = S.floors || 1;
-  // Period properties have lath+plaster, old substrates, asbestos risk — higher rate
-  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
-  const isAged = S.lastRefurb === 'never' || S.lastRefurb === '20plus';
-  const typeMod = isPeriod ? 1.25 : 1.0;
-  const ageMod = isAged ? 1.15 : 1.0;
-  const floorMod = 1 + (floors - 1) * 0.10; // each additional floor adds skips + labour
-  if (scope === 'full') {
-    // Full strip to structure: base rate per m² + floor/type/age factors
-    const lo = Math.round(gia * 38 * typeMod * ageMod * floorMod);
-    const hi = Math.round(gia * 72 * typeMod * ageMod * floorMod);
-    return [lo, hi];
-  }
-  if (scope === 'targeted') {
-    // Targeted strip: priced by room count (bathrooms + kitchen + demoRooms)
-    const rooms = (S.bathrooms || 0) + (S.cloakrooms || 0) + (S.kitchenScope && S.kitchenScope !== 'none' ? 1 : 0) + (S.demoRooms || 0);
-    const rCount = Math.max(1, rooms);
-    const lo = Math.round(rCount * 600 * typeMod * ageMod);
-    const hi = Math.round(rCount * 1400 * typeMod * ageMod);
-    return [lo, hi];
-  }
-  return [0, 0];
-}
-const STRUCT_RATE = {
-  standard: [120, 180],
-  period: [160, 240]
-};
-const PERIOD_RESTORE_M2 = [18, 30];
-const PERIOD_RESTORE_ROOM = [300, 600];
-const PERIOD_MOD = {
-  'period-house': 1.12,
-  'period-flat': 1.12,
-  'newbuild-house': 1,
-  'newbuild-flat': 1,
-  'commercial': 1.08
-};
-const AGE_MOD = {
-  'pre1900': 1.12,
-  '1900-1960': 1.07,
-  '1960-2000': 1.03,
-  'post2000': 1
-};
-const LISTED_MOD = {
-  'none': 1,
-  'grade2': 1.08,
-  'grade2star': 1.10,
-  'grade1': 1.12
-};
-// Condition mod now driven by handover + lastRefurb combined
-// handover: empty/furnished/part-cleared
-// lastRefurb: never/20plus/10to20/5to10/recent
-const HANDOVER_MOD = {
-  'empty': 1,
-  'furnished': 1.05,
-  'part-cleared': 1.03
-};
-const REFURB_MOD = {
-  'never': 1.12,
-  '20plus': 1.10,
-  '10to20': 1.06,
-  '5to10': 1.02,
-  'recent': 1.0
-};
-const CEIL_RAD = {
-  standard: 1,
-  tall: 1.10,
-  'double-height': 1.25
-};
-const WINDOW_UNIT = {
-  none: [0, 0],
-  replace: [650, 1200],
-  new: [1500, 2800],
-  sash: [850, 1600]
-};
-const DOOR_COST = {
-  none: [0, 0],
-  front: [1500, 4000],
-  back: [1500, 4000],
-  both: [3000, 8000]
-};
-const ROOF_COST = {
-  none: [0, 0],
-  '1': [1200, 2500],
-  '2plus': [2400, 5000]
-};
-const ELEC_RATE = {
-  none: [0, 0],
-  partial: [22, 34],
-  'full-cu': [42, 62]
-};
-const SOCKET_COST = {
-  standard: [3, 6],
-  premium: [25, 60],
-  designer: [80, 200]
-};
-const SWITCH_COST = {
-  standard: [2, 5],
-  premium: [20, 55],
-  designer: [60, 180]
-};
-const ELEC_MIN = {
-  standard: 500,
-  premium: 1500,
-  designer: 4000
-};
-// Plumbing — dynamic by property size, room count, and floors
-// Note: bathroom sanitaryware/tiling costs are in the Bathrooms line — this covers pipework infrastructure only
-function calcPlumbing(scope, S) {
-  if (!scope || scope === 'none') return [0, 0];
-  const baths = (S.bathrooms || 0) + (S.cloakrooms || 0);
-  const beds = S.bedrooms || 1;
-  const floors = S.floors || 1;
-  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
-  // Vertical runs add cost per additional floor
-  const floorFactor = 1 + (floors - 1) * 0.12;
-  if (scope === 'partial') {
-    const lo = Math.round((1200 + baths * 400 + beds * 120) * floorFactor);
-    const hi = Math.round((2200 + baths * 700 + beds * 200) * floorFactor);
-    return [lo, hi];
-  }
-  if (scope === 'full') {
-    // Base scales with GIA — small flats have lower base connection cost
-    const base_lo = Math.round(400 + gia * 6);
-    const base_hi = Math.round(700 + gia * 10);
-    const lo = Math.round((base_lo + baths * 600 + beds * 180) * floorFactor);
-    const hi = Math.round((base_hi + baths * 1100 + beds * 320) * floorFactor);
-    return [lo, hi];
-  }
-  return [0, 0];
-}
-const BOILER_COST = {
-  keep: [0, 0],
-  replace: [1500, 3000],
-  combi: [2500, 4500],
-  system: [3200, 5800]
-};
-// Plumbing preview for UI labels — estimates range before full calc
-function plumbingPreview(scope, S) {
-  // If bathrooms not yet set, estimate from bedrooms (1 bath per 2 beds, min 1)
-  const estS = S.bathrooms > 0 ? S : {
-    ...S,
-    bathrooms: Math.max(1, Math.round((S.bedrooms || 1) / 2))
-  };
-  const r = calcPlumbing(scope, estS);
-  if (!r || r[1] === 0) return null;
-  const lo = Math.round(r[0] / 500) * 500;
-  const hi = Math.round(r[1] / 500) * 500;
-  return `£${lo >= 1000 ? (lo / 1000).toFixed(0) + 'k' : lo} – £${hi >= 1000 ? (hi / 1000).toFixed(0) + 'k' : hi}`;
+// ── MG-SYS-003 · SERVER-SIDE PRICING FETCH LAYER ─────────────
+// Pricing logic now lives in mg-submit/pricing.js. The client only:
+//   1. Asks for an HMAC token from /api/token
+//   2. Sends the state to /api/estimate (debounced) and renders the response
+// Pricing constants and computation no longer ship to the browser.
+
+const CALCULATOR_VERSION = "9.0";
+const API_BASE = (typeof window !== 'undefined' && window.location.hostname === 'localhost')
+  ? 'http://localhost:3000'
+  : 'https://mg-submit-production.up.railway.app';
+
+let _token = null;
+let _tokenExpires = 0;
+
+async function getToken() {
+  if (_token && Date.now() / 1000 < _tokenExpires - 30) return _token;
+  const res = await fetch(`${API_BASE}/api/token`, { credentials: 'omit' });
+  if (!res.ok) throw new Error('Token fetch failed');
+  const data = await res.json();
+  _token = data.token;
+  _tokenExpires = data.expires;
+  return _token;
 }
 
-// UFH rates per m²
-const UFH_RATE_WET = [80, 130];
-const UFH_RATE_ELEC = [40, 75];
-// UFH: zone implies type
-// wet-rooms-only = electric (bathrooms + tiled kitchen)
-// ground-floor   = wet system
-// whole-house    = wet system
-function calcUFH(S) {
-  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
-  const floors = S.floors || 1;
-  const bathrooms = S.bathrooms || 0;
-  const zone = S.ufhZone;
-  if (!zone || zone === 'none') return [0, 0];
-  if (zone === 'wet-rooms') {
-    // Electric UFH in bathrooms + kitchen if tiled
-    // Use minimum 1 bathroom if bathrooms not yet specified
-    const effectiveBaths = Math.max(1, bathrooms);
-    const kitchenM2 = S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? 8 : 0;
-    const m2 = effectiveBaths * 5 + kitchenM2;
-    return [Math.round(m2 * UFH_RATE_ELEC[0]), Math.round(m2 * UFH_RATE_ELEC[1])];
-  }
-  if (zone === 'ground-floor') {
-    // When single floor, ground-floor = whole property
-    const m2 = floors <= 1 ? gia : Math.round(gia / floors);
-    return [Math.round(m2 * UFH_RATE_WET[0]), Math.round(m2 * UFH_RATE_WET[1])];
-  }
-  if (zone === 'whole-house') {
-    return [Math.round(gia * UFH_RATE_WET[0]), Math.round(gia * UFH_RATE_WET[1])];
-  }
-  return [0, 0];
+let _debounceTimer = null;
+
+function fetchEstimate(S, setEstimate, setLoading, setError) {
+  setLoading(true);
+  setError(null);
+  clearTimeout(_debounceTimer);
+  _debounceTimer = setTimeout(async () => {
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE}/api/estimate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-MG-Token': token },
+        credentials: 'omit',
+        body: JSON.stringify(S)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      // /api/estimate may return { estimate: null } for incomplete inputs.
+      // Otherwise the body IS the estimate object.
+      setEstimate(data && data.estimate !== undefined ? data.estimate : data);
+      setLoading(false);
+    } catch (err) {
+      console.error('Estimate fetch error:', err);
+      setError('Estimate unavailable');
+      setLoading(false);
+    }
+  }, 450);
 }
-const MVHR_SIZE = {
-  small: [3500, 5000],
-  medium: [5000, 8000],
-  large: [8000, 12000]
-};
-const VENT_COST = {
-  none: [0, 0],
-  extractors: [600, 1800]
-};
-const SMART_COST = {
-  none: [0, 0],
-  basic: [1500, 4000],
-  full: [10000, 25000]
-};
-const RAD_COST = {
-  standard: [250, 450],
-  premium: [500, 1200],
-  designer: [1200, 3500]
-};
-const KIT_BASE = {
-  standard: {
-    small: [8000, 14000],
-    medium: [15000, 25000],
-    large: [22000, 38000]
-  },
-  premium: {
-    small: [20000, 35000],
-    medium: [38000, 60000],
-    large: [58000, 95000]
-  },
-  designer: {
-    small: [40000, 75000],
-    medium: [65000, 110000],
-    large: [100000, 180000]
-  }
-};
-const KIT_INSTALL = {
-  standard: {
-    small: [2500, 3000],
-    medium: [2800, 3500],
-    large: [3500, 4500]
-  },
-  premium: {
-    small: [3500, 4500],
-    medium: [4000, 5500],
-    large: [5000, 7000]
-  },
-  designer: {
-    small: [5000, 7000],
-    medium: [6500, 9000],
-    large: [8500, 13000]
-  }
-};
-const APP_COST = {
-  none: [0, 0],
-  standard: [3000, 7000],
-  premium: [8000, 15000],
-  full: [15000, 30000]
-};
-const KIT_DEDUCT = 12;
-const BATH_COST = {
-  standard: [9000, 14000],
-  premium: [18000, 30000],
-  designer: [35000, 60000]
-};
-const BATH_DED = [5, 4, 4, 3];
-const FREE_BATH = {
-  none: [0, 0],
-  '1': [1500, 3500],
-  '2plus': [3000, 7000]
-};
-const CLOAK_COST = {
-  standard: [3000, 4500],
-  premium: [5000, 8000],
-  designer: [8000, 14000]
-};
-const FURN_COST_PER_LM = {
-  standard: [1000, 1300],
-  premium: [1500, 2000],
-  designer: [2200, 3200]
-};
-const FURN_HEIGHT_MOD = {
-  'standard': 1.0,
-  'full': 1.15,
-  'tall': 1.30
-};
-const FLOOR_RATE = {
-  none: [0, 0],
-  'eng-wood': [48, 125],
-  'solid-wood': [85, 185],
-  mixed: [60, 145],
-  lvt: [35, 90],
-  carpet: [22, 60]
-};
-const DECO_RATE = {
-  none: [0, 0],
-  repaint: [25, 40],
-  'repaint-feature': [42, 68],
-  bespoke: [70, 125]
-};
-const SKIRT_RATE = {
-  keep: [0, 0],
-  standard: [26, 44],
-  bespoke: [52, 105]
-};
-const WALL_COST = [4500, 9500];
-const LOFT_RATE = [3800, 5200];
-const EXT_SINGLE = [3500, 4800];
-const EXT_DOUBLE = [4200, 5600];
-const BAS_FITOUT = [2500, 3500];
-const BAS_EXCAV = [3800, 6500];
-const BAS_ZONE1 = [5500, 9000];
-const EXT_COSTS = {
-  facade: [10000, 25000]
-};
-const GARDEN_RATE = {
-  small: [120, 200],
-  medium: [100, 170],
-  large: [85, 145]
-};
-const GARDEN_M2 = {
-  small: 60,
-  medium: 120,
-  large: 220
-};
-const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+
+// ── Display formatters ───────────────────────────────────────
+// Pure number→string helpers preserved from the old pricing block. They
+// operate on backend-returned numbers; no rate-card information.
 const fmt = n => '£' + Math.round(n).toLocaleString('en-GB');
 const fmtR = (lo, hi) => `${fmt(lo)} – ${fmt(hi)}`;
-const sqftToM2 = v => v * 0.0929;
-const getM2 = (raw, unit) => unit === 'sqft' ? sqftToM2(raw) : raw;
-
-// ── WALL AREA INFERENCE ───────────────────────────────────────
-const LAYOUT_WALL_MOD = {
-  cellular: 1.40,
-  'semi-open': 1.15,
-  'open-plan': 0.80
-};
-const UPPER_FLOOR_DEFAULT = 1.40;
-const OPENING_PER_ROOM = 2.5;
-function calcWallArea(S) {
-  const gia = getM2(S.giaRaw, S.giaUnit);
-  if (!gia || !S.floors) return gia * 1.5;
-  const floors = S.floors || 1;
-  const floorPlate = gia / floors;
-  const extPerimeter = 4 * Math.sqrt(floorPlate);
-  const ceilH = S.ceilingHeight === 'tall' ? 2.9 : S.ceilingHeight === 'double-height' ? 3.8 : 2.4;
-  const gfMod = LAYOUT_WALL_MOD[S.gfLayout] || 1.15;
-  const rooms = deriveRooms(S);
-  const totalRoomCount = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
-  // Internal partitions: each room beyond open living area adds ~3m of partition wall
-  const partitionLength = Math.max(0, totalRoomCount - 2) * 3.0;
-  const gfWallLength = extPerimeter * Math.max(0.9, gfMod) + partitionLength;
-  const upperWallLength = (extPerimeter * UPPER_FLOOR_DEFAULT + partitionLength) * Math.max(0, floors - 1);
-  const totalWallLength = gfWallLength + upperWallLength;
-  const grossWall = totalWallLength * ceilH;
-  const openings = totalRoomCount * OPENING_PER_ROOM;
-  // Floor for wall area: always at least 1.4× GIA (realistic minimum)
-  return Math.max(gia * 1.4, grossWall - openings);
-}
-function calcSkirtingLM(S) {
-  const gia = getM2(S.giaRaw, S.giaUnit);
-  if (!gia || !S.floors) return gia * 0.55;
-  const floors = S.floors || 1;
-  const floorPlate = gia / floors;
-  const extPerimeter = 4 * Math.sqrt(floorPlate);
-  const gfMod = LAYOUT_WALL_MOD[S.gfLayout] || 1.15;
-  const rooms = deriveRooms(S);
-  const totalRoomCount = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
-  const partitionLength = Math.max(0, totalRoomCount - 2) * 3.0;
-  const gfLength = extPerimeter * Math.max(0.9, gfMod) + partitionLength;
-  const upperLength = (extPerimeter * UPPER_FLOOR_DEFAULT + partitionLength) * Math.max(0, floors - 1);
-  // Deduct door openings (each ~0.9m of skirting interrupted)
-  const doorDeduction = totalRoomCount * 0.9;
-  return Math.max(gia * 0.4, gfLength + upperLength - doorDeduction);
-}
-const CONT_RATES = {
-  prelims: 0.05,
-  demo: 0.15,
-  structWorks: 0.10,
-  structure: 0.12,
-  electrical: 0.10,
-  plumbing: 0.12,
-  mechanical: 0.08,
-  kitchen: 0.05,
-  bath: 0.05,
-  cloak: 0.05,
-  furn: 0.05,
-  finishes: 0.08,
-  fabric: 0.08,
-  ext: 0.05,
-  fees: 0.00
-};
-function calcProjectUplift(S) {
-  let u = 0;
-  if (S.listed === 'grade1') u += 0.07;else if (S.listed === 'grade2star') u += 0.05;else if (S.listed === 'grade2') u += 0.04;
-  if (S.lastRefurb === 'never') u += 0.04;else if (S.lastRefurb === '20plus') u += 0.03;
-  if (S.zone === 'z1') u += 0.02;
-  return u;
-}
-function getLBCFee(S) {
-  // GIA-based LBC fee — Grade II base, with multipliers for higher grades
-  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
-  let base;
-  if (gia <= 60) base = 5500;else if (gia <= 80) base = 7000;else if (gia <= 100) base = 9000;else if (gia <= 120) base = 11000;else if (gia <= 140) base = 14000;else if (gia <= 160) base = 16000;else if (gia <= 200) base = 20000;else if (gia <= 250) base = 25000;else if (gia <= 350) base = 30000;else base = 36000;
-  const gradeMultiplier = S.listed === 'grade1' ? 1.8 : S.listed === 'grade2star' ? 1.3 : 1.0;
-  return Math.round(base * gradeMultiplier);
-}
-function calcContingencyPerLine(lines, S) {
-  const uplift = calcProjectUplift(S);
-  let total = [0, 0];
-  Object.entries(lines).forEach(([key, val]) => {
-    const rate = Math.min(0.25, (CONT_RATES[key] || 0.08) + uplift);
-    total = [total[0] + Math.round(val[0] * rate), total[1] + Math.round(val[1] * rate)];
-  });
-  return total;
-}
-function getContRate(S) {
-  const base = S.scope === 'full' ? 0.10 : S.scope === 'partial' ? 0.08 : S.scope === 'kit-bath' ? 0.06 : 0.08;
-  return Math.min(0.20, base + calcProjectUplift(S));
-}
-function deriveRooms(S) {
-  const gia = getM2(S.giaRaw, S.giaUnit);
-  return {
-    bedrooms: S.bedrooms,
-    bathrooms: S.bathrooms,
-    cloakrooms: S.cloakrooms,
-    kitchen: S.kitchenScope && S.kitchenScope !== 'none' && S.kitchenScope !== 'keep' ? 1 : 0,
-    living: 1,
-    dining: gia >= 70 ? 1 : 0,
-    hallways: ['period-house', 'newbuild-house'].includes(S.propertyType) ? 2 : 1,
-    utility: gia >= 100 ? 1 : 0
-  };
-}
-function calcComponents(rooms, ceilH) {
-  const sockets = rooms.bedrooms * 4 + rooms.kitchen * 6 + rooms.living * 8 + rooms.dining * 6 + rooms.hallways * 2 + rooms.bathrooms * 1 + rooms.cloakrooms * 1 + rooms.utility * 3;
-  const switches = rooms.bedrooms * 2 + rooms.kitchen * 2 + rooms.living * 3 + rooms.dining * 3 + rooms.hallways * 2 + rooms.bathrooms * 1 + rooms.cloakrooms * 1 + rooms.utility * 1;
-  const raw = rooms.bedrooms * 1.5 + rooms.kitchen * 1 + rooms.living * 2 + rooms.dining * 1 + rooms.hallways * 1 + rooms.utility * 0.5;
-  return {
-    sockets,
-    switches,
-    radCount: Math.ceil(raw * (CEIL_RAD[ceilH] || 1))
-  };
-}
-
-// ── PARTIAL SCOPE MASK ───────────────────────────────────────────
-// Derives cost multipliers from partialAreas selection.
-// Returns: { giaFrac, includeKitchen, includeBath, includeCloak,
-//            includeFinishes, includeMEP, includeStructure }
-function calcPartialMask(S) {
-  if (S.scope !== 'partial' || !S.partialAreas || S.partialAreas.length === 0) {
-    // Full scope — everything at 100%
-    return {
-      giaFrac: 1,
-      includeKitchen: true,
-      includeBath: true,
-      includeCloak: true,
-      includeFinishes: true,
-      includeMEP: true,
-      includeStructure: true,
-      plumbFrac: 1,
-      elecFrac: 1
-    };
-  }
-  const a = S.partialAreas;
-  const floors = S.floors || 1;
-
-  // GIA fraction — what proportion of the property is being worked on
-  let giaFrac = 0;
-  if (a.includes('living')) giaFrac += 0.30;
-  if (a.includes('bedrooms')) giaFrac += 0.40;
-  if (a.includes('master')) giaFrac += Math.min(0.20, 0.40 / Math.max(1, S.bedrooms));
-  if (a.includes('one-floor')) giaFrac += 1 / floors;
-  if (a.includes('kitchen')) giaFrac += 0.12;
-  if (a.includes('bathrooms')) giaFrac += 0.10;
-  if (a.includes('excl-bathrooms')) giaFrac += 0.85;
-  if (a.includes('services-only')) giaFrac = 1.0; // MEP runs whole property
-
-  // Cap at 1.0, floor at 0.10
-  giaFrac = Math.min(1.0, Math.max(0.10, giaFrac));
-
-  // Fixed-cost line inclusions
-  const includeKitchen = a.includes('kitchen') || a.includes('one-floor') || a.includes('excl-bathrooms');
-  const includeBath = a.includes('bathrooms') || a.includes('one-floor');
-  const includeCloak = a.includes('bathrooms') || a.includes('one-floor');
-  const includeFinishes = !a.includes('services-only');
-  const includeMEP = true; // MEP always included in partial — main reason to do it
-  const includeStructure = true; // Structural items are always explicitly chosen
-
-  // MEP fractions — services run the whole property regardless of area
-  const elecFrac = a.includes('services-only') ? 1.0 : giaFrac;
-  const plumbFrac = a.includes('services-only') ? 1.0 : includeBath ? 1.0 : 0.5;
-  return {
-    giaFrac,
-    includeKitchen,
-    includeBath,
-    includeCloak,
-    includeFinishes,
-    includeMEP,
-    includeStructure,
-    plumbFrac,
-    elecFrac
-  };
-}
-function recalc(S) {
-  var _PRELIMS$S$zone;
-  const gia = getM2(S.giaRaw, S.giaUnit);
-  if (!gia || !S.zone || !S.scope) return null;
-  const baseMod = (PERIOD_MOD[S.propertyType] || 1) * (AGE_MOD[S.buildingAge] || 1) * (LISTED_MOD[S.listed] || 1) * (HANDOVER_MOD[S.handover] || 1) * (REFURB_MOD[S.lastRefurb] || 1);
-  const flP = FLOOR_MOD_P[S.floors] || 1;
-  const flS = FLOOR_MOD_S[S.floors] || 1;
-  const accM = ACCESS_MOD[S.access] || 1;
-  const wallArea = calcWallArea(S);
-  const skirtingLM = calcSkirtingLM(S);
-
-  // Partial scope mask — scales cost lines based on partialAreas selection
-  const pm = calcPartialMask(S);
-  let bathDed = 0;
-  for (let i = 0; i < S.bathrooms; i++) {
-    var _BATH_DED$i;
-    bathDed += (_BATH_DED$i = BATH_DED[i]) !== null && _BATH_DED$i !== void 0 ? _BATH_DED$i : 3;
-  }
-  const cloakDed = S.cloakrooms * 2;
-  const kitDed = S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout' ? KIT_DEDUCT : 0;
-  // Apply GIA fraction for partial scope
-  const rawNetGIA = Math.max(10, gia - bathDed - cloakDed - kitDed);
-  const netGIA = S.scope === 'partial' ? Math.max(10, rawNetGIA * pm.giaFrac) : rawNetGIA;
-  // Flooring GIA: include kitchen (deduct bathrooms only) — kitchen floor IS in scope
-  const flooringGIA = S.scope === 'partial' ? Math.max(10, (gia - bathDed - cloakDed) * pm.giaFrac) : Math.max(10, gia - bathDed - cloakDed);
-  const sKey = S.scope === 'structural-only' ? 'structural-only' : S.scope === 'full' ? 'full' : S.scope === 'partial' ? 'partial' : 'kit-bath';
-  const pB = ((_PRELIMS$S$zone = PRELIMS[S.zone]) === null || _PRELIMS$S$zone === void 0 ? void 0 : _PRELIMS$S$zone[sKey]) || [5000, 12000];
-  const prelims = [pB[0] * flP * accM, pB[1] * flP * accM];
-  let demo = calcDemo(S.demo, S);
-  let structWorks = [0, 0];
-  if (S.structural.includes('walls')) structWorks = add(structWorks, WALL_COST);
-  const lM2 = getM2(S.loftRaw, S.loftUnit);
-  const eM2 = getM2(S.extRaw, S.extUnit);
-  const bM2 = getM2(S.basRaw, S.basUnit);
-  if (S.structural.includes('loft') && lM2 > 0) structWorks = add(structWorks, [lM2 * LOFT_RATE[0], lM2 * LOFT_RATE[1]]);
-  if (S.structural.includes('extension') && eM2 > 0) {
-    const r = S.storeys === 'double' ? EXT_DOUBLE : EXT_SINGLE;
-    structWorks = add(structWorks, [eM2 * r[0], eM2 * r[1]]);
-  }
-  if (S.structural.includes('basement') && bM2 > 0) {
-    const r = S.basType === 'excavation' ? S.zone === 'z1' ? BAS_ZONE1 : BAS_EXCAV : BAS_FITOUT;
-    structWorks = add(structWorks, [bM2 * r[0], bM2 * r[1]]);
-  }
-  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
-  const sR = isPeriod ? STRUCT_RATE.period : STRUCT_RATE.standard;
-  const floorComp = netGIA * 0.6;
-  const plasterComp = wallArea * 0.12;
-  const structBaseMod = isPeriod ? baseMod / (PERIOD_MOD[S.propertyType] || 1) : baseMod;
-  let structure = [floorComp * sR[0] * structBaseMod * flS + plasterComp * sR[0] * structBaseMod * flS, floorComp * sR[1] * structBaseMod * flS + plasterComp * sR[1] * structBaseMod * flS];
-  if (S.periodFeatures === 'yes' && isPeriod) {
-    const rooms = deriveRooms(S);
-    const tr = rooms.bedrooms + rooms.living + rooms.dining + rooms.kitchen + rooms.hallways;
-    structure = add(structure, [gia * PERIOD_RESTORE_M2[0] + tr * PERIOD_RESTORE_ROOM[0], gia * PERIOD_RESTORE_M2[1] + tr * PERIOD_RESTORE_ROOM[1]]);
-  }
-  const eR = ELEC_RATE[S.electrical] || [0, 0];
-  const rooms = deriveRooms(S);
-  const {
-    sockets,
-    switches,
-    radCount
-  } = calcComponents(rooms, S.ceilingHeight);
-  let eFin = [0, 0];
-  if (S.elecFinish && S.elecFinish !== 'na') {
-    const sc = SOCKET_COST[S.elecFinish] || [0, 0];
-    const sw = SWITCH_COST[S.elecFinish] || [0, 0];
-    const rL = sockets * sc[0] + switches * sw[0];
-    const rH = sockets * sc[1] + switches * sw[1];
-    eFin = [Math.max(ELEC_MIN[S.elecFinish] || 0, rL * 1.15), rH * 1.15];
-  }
-  let electrical = [netGIA * eR[0] + eFin[0], netGIA * eR[1] + eFin[1]];
-  const plumbingRaw = calcPlumbing(S.plumbing, S);
-  const plumbing = S.scope === 'partial' ? [Math.round(plumbingRaw[0] * pm.plumbFrac), Math.round(plumbingRaw[1] * pm.plumbFrac)] : plumbingRaw;
-  let mechanical = add([0, 0], BOILER_COST[S.boiler] || [0, 0]);
-  {
-    const ufhCost = calcUFH(S);
-    if (ufhCost[1] > 0) mechanical = add(mechanical, ufhCost);
-  }
-  if (S.ventilation === 'mvhr') {
-    const sz = S.bathrooms <= 1 ? 'small' : S.bathrooms <= 2 ? 'medium' : 'large';
-    const rf = S.buildingAge === 'pre1900' || S.buildingAge === '1900-1960' || S.lastRefurb === 'never' || S.lastRefurb === '20plus' ? 1.3 : 1;
-    const m = MVHR_SIZE[sz];
-    mechanical = add(mechanical, [m[0] * rf, m[1] * rf]);
-  } else mechanical = add(mechanical, VENT_COST[S.ventilation] || [0, 0]);
-  mechanical = add(mechanical, SMART_COST[S.smart] || [0, 0]);
-  if (S.replaceRads === 'yes' && S.radTier && S.radCount > 0) {
-    const rc = RAD_COST[S.radTier] || [0, 0];
-    mechanical = add(mechanical, [S.radCount * rc[0], S.radCount * rc[1]]);
-  }
-  let kitchen = [0, 0];
-  if ((S.scope !== 'partial' || pm.includeKitchen) && (S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout')) {
-    var _KIT_BASE$t, _KIT_INSTALL$t, _KIT_INSTALL$t2;
-    const t = S.kitTier || 'standard';
-    const sz = S.kitSize || 'medium';
-    kitchen = add(kitchen, ((_KIT_BASE$t = KIT_BASE[t]) === null || _KIT_BASE$t === void 0 ? void 0 : _KIT_BASE$t[sz]) || [15000, 25000]);
-    kitchen = add(kitchen, APP_COST[S.appliances] || [0, 0]);
-    kitchen = add(kitchen, ((_KIT_INSTALL$t = KIT_INSTALL[t]) === null || _KIT_INSTALL$t === void 0 ? void 0 : _KIT_INSTALL$t[sz]) || ((_KIT_INSTALL$t2 = KIT_INSTALL[t]) === null || _KIT_INSTALL$t2 === void 0 ? void 0 : _KIT_INSTALL$t2.medium) || [2500, 3500]);
-  }
-  let bath = [0, 0];
-  if ((S.scope !== 'partial' || pm.includeBath) && S.bathrooms > 0) {
-    const bT = S.bathTier || 'standard';
-    const bC = BATH_COST[bT] || BATH_COST.standard;
-    bath = [bC[0] * S.bathrooms, bC[1] * S.bathrooms];
-  }
-  if (S.scope !== 'partial' || pm.includeBath) bath = add(bath, FREE_BATH[S.freestandingBath] || [0, 0]);
-  let cloak = [0, 0];
-  if ((S.scope !== 'partial' || pm.includeCloak) && S.cloakrooms > 0) {
-    const cT = S.bathTier || 'standard';
-    const cC = CLOAK_COST[cT] || CLOAK_COST.standard;
-    cloak = [cC[0] * S.cloakrooms, cC[1] * S.cloakrooms];
-  }
-  let furn = [0, 0];
-  if (S.bespokeFurniture === 'yes' && S.furnitureLM > 0 && S.furnitureTier && S.furnitureHeight) {
-    const r = FURN_COST_PER_LM[S.furnitureTier] || [0, 0];
-    const hm = FURN_HEIGHT_MOD[S.furnitureHeight] || 1;
-    furn = [Math.round(r[0] * S.furnitureLM * hm), Math.round(r[1] * S.furnitureLM * hm)];
-  }
-  let finishes = [0, 0];
-  if (S.scope !== 'partial' || pm.includeFinishes) {
-    const fr = FLOOR_RATE[S.flooring] || [0, 0];
-    const dr = DECO_RATE[S.decoration] || [0, 0];
-    const sr = SKIRT_RATE[S.skirtings] || [0, 0];
-    // Wall area and skirting also scaled by giaFrac for partial scope
-    const partialWall = S.scope === 'partial' ? wallArea * pm.giaFrac : wallArea;
-    const partialSk = S.scope === 'partial' ? skirtingLM * pm.giaFrac : skirtingLM;
-    finishes = add(finishes, [flooringGIA * fr[0], flooringGIA * fr[1]]);
-    finishes = add(finishes, [partialWall * dr[0], partialWall * dr[1]]);
-    finishes = add(finishes, [partialSk * sr[0], partialSk * sr[1]]);
-  }
-  let fabric = [0, 0];
-  // Windows — multi-type, each priced separately
-  if (S.windowTypes && S.windowTypes.includes('replace') && S.replaceCount > 0) {
-    const r = WINDOW_UNIT.replace;
-    fabric = add(fabric, [r[0] * S.replaceCount, r[1] * S.replaceCount]);
-  }
-  if (S.windowTypes && S.windowTypes.includes('new') && S.newOpenings > 0) {
-    const r = WINDOW_UNIT.new;
-    fabric = add(fabric, [r[0] * S.newOpenings, r[1] * S.newOpenings]);
-  }
-  if (S.windowTypes && S.windowTypes.includes('sash') && S.sashCount > 0) {
-    const r = WINDOW_UNIT.sash;
-    fabric = add(fabric, [r[0] * S.sashCount, r[1] * S.sashCount]);
-  }
-  if (S.doors && S.doors !== 'none') fabric = add(fabric, DOOR_COST[S.doors] || [0, 0]);
-  if (S.rooflights && S.rooflights !== 'none') fabric = add(fabric, ROOF_COST[S.rooflights] || [0, 0]);
-  let ext = [0, 0];
-  if (S.external.includes('garden') && S.gardenSize) {
-    const gr = GARDEN_RATE[S.gardenSize];
-    const gm2 = GARDEN_M2[S.gardenSize];
-    ext = add(ext, [gm2 * gr[0], gm2 * gr[1]]);
-  }
-  if (S.external.includes('facade')) ext = add(ext, EXT_COSTS.facade);
-  let feeLo = 500,
-    feeHi = 1200;
-  if (S.tenure === 'leasehold') {
-    feeLo += 2500;
-    feeHi += 8000;
-  }
-  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
-  const effArr = ['period-flat', 'newbuild-flat', 'commercial'].includes(S.propertyType) ? 'flat' : S.arrangement;
-  if (hasStruct && ['semi', 'terrace', 'flat'].includes(effArr)) {
-    feeLo += 900;
-    feeHi += 2500;
-  }
-  if (S.listed && S.listed !== 'none') {
-    const lbcF = getLBCFee(S);
-    feeLo += Math.round(lbcF * 0.75);
-    feeHi += Math.round(lbcF * 1.25);
-  }
-  if (hasStruct) {
-    feeLo += 800;
-    feeHi += 1500;
-  }
-  // Scope masking — zero out lines irrelevant to selected scope
-  if (S.scope === 'kit-bath') {
-    structure = [0, 0]; structWorks = [0, 0]; demo = [0, 0];
-    finishes = [0, 0]; furn = [0, 0]; fabric = [0, 0]; ext = [0, 0];
-  }
-  if (S.scope === 'structural-only') {
-    kitchen = [0, 0]; bath = [0, 0]; cloak = [0, 0];
-    finishes = [0, 0]; furn = [0, 0];
-  }
-  const subBF = [prelims[0] + demo[0] + structWorks[0] + structure[0] + electrical[0] + plumbing[0] + mechanical[0] + kitchen[0] + bath[0] + cloak[0] + furn[0] + finishes[0] + fabric[0] + ext[0], prelims[1] + demo[1] + structWorks[1] + structure[1] + electrical[1] + plumbing[1] + mechanical[1] + kitchen[1] + bath[1] + cloak[1] + furn[1] + finishes[1] + fabric[1] + ext[1]];
-  if (S.scope === 'full' || S.scope === 'partial') {
-    feeLo += Math.max(500, Math.round(subBF[0] * 0.005));
-    feeHi += Math.max(800, Math.round(subBF[1] * 0.008));
-  }
-  const fees = [feeLo, feeHi];
-  let sub = [0, 0];
-  [prelims, demo, structWorks, structure, electrical, plumbing, mechanical, kitchen, bath, cloak, furn, finishes, fabric, ext, fees].forEach(c => sub = add(sub, c));
-  const cont = calcContingencyPerLine({
-    prelims,
-    demo,
-    structWorks,
-    structure,
-    electrical,
-    plumbing,
-    mechanical,
-    kitchen,
-    bath,
-    cloak,
-    furn,
-    finishes,
-    fabric,
-    ext,
-    fees
-  }, S);
-  const cr = getContRate(S);
-  const total = add(sub, cont);
-  const timeline = calcTimeline(S);
-  return {
-    prelims,
-    demo,
-    structWorks,
-    structure,
-    electrical,
-    plumbing,
-    mechanical,
-    kitchen,
-    bath,
-    cloak,
-    furn,
-    finishes,
-    fabric,
-    ext,
-    fees,
-    cont,
-    total,
-    cr,
-    netGIA,
-    wallArea: Math.round(wallArea),
-    skirtingLM: Math.round(skirtingLM),
-    sockets,
-    switches,
-    radCount,
-    low: total[0],
-    mid: (total[0] + total[1]) / 2,
-    high: total[1],
-    timeline
-  };
-}
-
-// ── REFERENCE NUMBER PROTOCOL — MG-SYS-002 ────────────────────
-// Format: MG-[SS][Z][TTTT]   (7 chars after prefix)
-//   SS    scope  FR/PR/KB/SO/XX
-//   Z     zone   1-4, 0=unknown
-//   TTTT  token  = 2 chars Date.now() base36 (monotonic per ms)
-//                + 2 chars crypto.getRandomValues base36
-// Two refs generated ≥1 ms apart cannot collide (timestamp differs).
-// Two refs in the same ms collide only if random chars also match
-// (1/1296) — effectively impossible at Myrmex volumes.
-// Examples: MG-FR1A3K9, MG-KB29X2P, MG-SO3B7FH
-const MG_BASE36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-function mgCryptoTwoBase36() {
-  let a, b;
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    const buf = new Uint8Array(2);
-    crypto.getRandomValues(buf);
-    a = buf[0] % 36;
-    b = buf[1] % 36;
-  } else {
-    a = Math.floor(Math.random() * 36);
-    b = Math.floor(Math.random() * 36);
-  }
-  return MG_BASE36[a] + MG_BASE36[b];
-}
-function generateRef(S) {
-  const state = S || {};
-  const scopeMap = {
-    'full':            'FR',
-    'partial':         'PR',
-    'kit-bath':        'KB',
-    'structural-only': 'SO',
-  };
-  const scope = scopeMap[state.scope] || 'XX';
-  const zoneMap = { 'z1': '1', 'z2': '2', 'z3': '3', 'z4-6': '4' };
-  const zone = zoneMap[state.zone] || '0';
-  const ts = Date.now().toString(36).toUpperCase().slice(-2).padStart(2, '0');
-  const rnd = mgCryptoTwoBase36();
-  return `MG-${scope}${zone}${ts}${rnd}`;
-}
-
-// ── DETAILED BREAKDOWN ────────────────────────────────────────
-// Returns sub-component tree for PDF output.
-// Midpoints at line level, ranges at section level.
-function calcDetailedBreakdown(S, est) {
-  var _S$zone, _S$zone2, _S$windowTypes, _S$windowTypes2, _S$windowTypes3;
-  if (!est) return null;
-  const gia = getM2(S.giaRaw, S.giaUnit) || 50;
-  const floors = S.floors || 1;
-  const isPeriod = ['period-house', 'period-flat'].includes(S.propertyType);
-  const isAged = S.lastRefurb === 'never' || S.lastRefurb === '20plus';
-  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
-  const mid = ([lo, hi]) => Math.round((lo + hi) / 2);
-  const rng = ([lo, hi]) => `£${Math.round(lo).toLocaleString('en-GB')} – £${Math.round(hi).toLocaleString('en-GB')}`;
-  const fmtM = n => n > 0 ? `£${Math.round(n).toLocaleString('en-GB')}` : '—';
-  const pct = n => `${Math.round(n * 100)}%`;
-
-  // ── PRELIMINARIES ──
-  const prelimTotal = est.prelims;
-  const prelimMid = mid(prelimTotal);
-  const prelim_pm = Math.round(prelimMid * 0.45);
-  const prelim_rams = Math.round(prelimMid * 0.09);
-  // Site setup scales down for internal-only projects (no hoarding, no scaffold)
-  const hasExternalWork = hasStruct || S.external && S.external.length > 0;
-  const setupPct = hasExternalWork ? 0.16 : 0.09;
-  const prelim_setup = Math.max(600, Math.round(prelimMid * setupPct));
-  // Materials logistics: 8% of prelims, capped — this is coordination overhead not materials cost
-  const logisticsCap = Math.max(600, Math.round(gia * 12)); // ~£720 per 60m², £1,440 per 120m²
-  const prelim_logistics = Math.min(logisticsCap, Math.round(prelimMid * 0.08));
-  // Insurance: ~£200-250/month for contractor all-risk on a residential project
-  // Programme months derived from GIA: small flat ~3-4 months, large house ~6-8 months
-  const progMonths = Math.max(3, Math.round(gia / 25));
-  const prelim_insurance = Math.min(Math.max(600, progMonths * 225), 1800);
-  const prelim_other = prelim_insurance; // insurance is the 'other' line
-  const prelimLines = [{
-    label: 'Site management & project manager',
-    note: `Zone ${((_S$zone = S.zone) === null || _S$zone === void 0 ? void 0 : _S$zone.toUpperCase()) || '—'} rate · programme, procurement, subcontractor coordination, client reporting`,
-    value: prelim_pm
-  }, {
-    label: 'RAMS, H&S documentation & CDM',
-    note: 'Statutory requirement',
-    value: prelim_rams
-  }, {
-    label: `Site setup & welfare`,
-    note: `Dust protection, welfare box, skip permits, PPE, signage${hasExternalWork ? ' · hoarding & temporary works' : ''}`,
-    value: prelim_setup
-  }, {
-    label: 'Materials logistics & delivery coordination',
-    note: `Zone ${((_S$zone2 = S.zone) === null || _S$zone2 === void 0 ? void 0 : _S$zone2.toUpperCase()) || '—'} logistics`,
-    value: prelim_logistics
-  }, {
-    label: 'Contractor All-Risk insurance',
-    note: `~£225/month × ${Math.max(3, Math.round(gia / 25))} month programme`,
-    value: prelim_other
-  }];
-
-  // ── STRIP-OUT & DEMOLITION ──
-  const demoTotal = est.demo;
-  const demoMid = mid(demoTotal);
-  let demoLines = [];
-  if (demoMid > 0) {
-    const isPeriodDemo = ['period-house', 'period-flat'].includes(S.propertyType);
-    const skipCount = S.demo === 'full' ? Math.max(2, Math.ceil(gia / 12) + (isPeriodDemo ? 1 : 0)) : S.demo === 'targeted' ? Math.max(1, Math.ceil(gia / 30) + (isPeriodDemo ? 1 : 0)) : 1;
-    const labourShare = Math.round(demoMid * 0.55);
-    const skipShare = Math.round(demoMid * 0.25);
-    const asbestos = S.buildingAge === 'pre1900' || S.buildingAge === '1900-1960' ? Math.round(demoMid * 0.12) : 0;
-    const disposal = demoMid - labourShare - skipShare - asbestos;
-    demoLines = [{
-      label: 'Demolition labour',
-      note: S.demo === 'full' ? 'Full strip to structure' : 'Targeted rooms',
-      value: labourShare
-    }, {
-      label: `Skip hire (est. ${skipCount} skips)`,
-      note: 'Includes transport & tipping',
-      value: skipShare
-    }, ...(asbestos > 0 ? [{
-      label: 'Asbestos survey & management',
-      note: 'Pre-1960 property — statutory',
-      value: asbestos
-    }] : []), {
-      label: 'Specialist disposal & making good',
-      note: 'Waste segregation, temporary protection',
-      value: disposal
-    }];
-  }
-
-  // ── STRUCTURE ──
-  const structTotal = est.structure;
-  const structMid = mid(structTotal);
-  const floorComp = Math.round(structMid * 0.60);
-  const plasterComp = Math.round(structMid * 0.32);
-  const periodComp = S.periodFeatures === 'yes' && isPeriod ? Math.round(structMid * 0.08) : 0;
-  const structLines = [{
-    label: 'Floor-based works',
-    note: `Screeding, door frames, ceiling, structural fixes · ${Math.round(est.netGIA)}m² net`,
-    value: floorComp
-  }, {
-    label: 'Plastering & making good',
-    note: `Inferred wall area: ${est.wallArea}m²`,
-    value: plasterComp
-  }, ...(periodComp > 0 ? [{
-    label: 'Period feature restoration',
-    note: 'Cornicing, ceiling roses, dado/picture rails',
-    value: periodComp
-  }] : [])];
-
-  // ── STRUCTURAL WORKS (extensions, loft etc) ──
-  const sWorkTotal = est.structWorks;
-  const sWorkMid = mid(sWorkTotal);
-  let sWorkLines = [];
-  if (sWorkMid > 0) {
-    if (S.structural.includes('walls')) sWorkLines.push({
-      label: 'Wall removal(s)',
-      note: 'RSJ supply, installation, lateral restraint, making good',
-      value: mid(WALL_COST)
-    });
-    const lM2 = getM2(S.loftRaw, S.loftUnit) || 0;
-    const eM2 = getM2(S.extRaw, S.extUnit) || 0;
-    const bM2 = getM2(S.basRaw, S.basUnit) || 0;
-    if (S.structural.includes('loft') && lM2 > 0) {
-      const r = LOFT_RATE;
-      sWorkLines.push({
-        label: `Loft conversion (${lM2}m²)`,
-        note: 'Structure, roofing, dormer or velux, staircase allowance',
-        value: Math.round(lM2 * mid(r))
-      });
-    }
-    if (S.structural.includes('extension') && eM2 > 0) {
-      const r = S.storeys === 'double' ? EXT_DOUBLE : EXT_SINGLE;
-      sWorkLines.push({
-        label: `Extension — ${S.storeys || 'single'} storey (${eM2}m²)`,
-        note: 'Foundations, frame, roof, external envelope — shell only',
-        value: Math.round(eM2 * mid(r))
-      });
-    }
-    if (S.structural.includes('basement') && bM2 > 0) {
-      const r = S.basType === 'excavation' ? S.zone === 'z1' ? BAS_ZONE1 : BAS_EXCAV : BAS_FITOUT;
-      sWorkLines.push({
-        label: `Basement — ${S.basType || 'fit-out'} (${bM2}m²)`,
-        note: S.basType === 'excavation' ? 'Excavation, underpinning, waterproofing, slab' : 'Fit-out of existing void — waterproofing, slab, services',
-        value: Math.round(bM2 * mid(r))
-      });
-    }
-  }
-
-  // ── ELECTRICAL ──
-  const elecTotal = est.electrical;
-  const elecMid = mid(elecTotal);
-  const eR = ELEC_RATE[S.electrical] || [0, 0];
-  const firstFixVal = Math.round(est.netGIA * mid(eR));
-  const finishVal = elecMid - firstFixVal;
-  let elecLines = [];
-  if (elecMid > 0) {
-    elecLines = [{
-      label: `${S.electrical === 'full-cu' ? 'Full rewire + consumer unit' : 'Partial rewire'} — first fix`,
-      note: `${Math.round(est.netGIA)}m² × £${mid(eR)}/m²`,
-      value: firstFixVal
-    }, ...(finishVal > 0 ? [{
-      label: `Electrical finishes — ${S.elecFinish || 'standard'}`,
-      note: `${est.sockets} sockets, ${est.switches} switches — ${S.elecFinish === 'designer' ? 'Buster+Punch/Lutron' : S.elecFinish === 'premium' ? 'Varilight/Hamilton' : 'MK Logic/BG'}`,
-      value: finishVal
-    }] : [])];
-  }
-
-  // ── PLUMBING ──
-  const plumbTotal = est.plumbing;
-  const plumbMid = mid(plumbTotal);
-  const baths = (S.bathrooms || 0) + (S.cloakrooms || 0);
-  const beds = S.bedrooms || 1;
-  const floorFactor = 1 + (floors - 1) * 0.12;
-  let plumbLines = [];
-  if (plumbMid > 0) {
-    const baseVal = Math.round(plumbMid * (1800 / ((1800 + baths * 800 + beds * 250) * Math.max(1, gia / 80) * floorFactor)) || 0.25);
-    const bathVal = Math.round(plumbMid * 0.45);
-    const bedVal = Math.round(plumbMid * 0.20);
-    const flrVal = plumbMid - baseVal - bathVal - bedVal;
-    plumbLines = [{
-      label: 'Cold feed, mains connection & isolation',
-      note: 'Stop valve, service connections, pressure regulation',
-      value: Math.max(0, baseVal)
-    }, {
-      label: `Bathroom supply & waste runs (×${baths})`,
-      note: 'Hot/cold supply, soil & waste stack connections',
-      value: Math.max(0, bathVal)
-    }, {
-      label: `Bedroom heating feeds (×${beds})`,
-      note: 'Radiator circuit spurs and zone controls',
-      value: Math.max(0, bedVal)
-    }, ...(flrVal > 0 ? [{
-      label: `Multi-floor vertical runs`,
-      note: `${floors} floors · +${Math.round((floorFactor - 1) * 100)}% uplift`,
-      value: flrVal
-    }] : [])];
-  }
-
-  // ── MECHANICAL ──
-  const mechTotal = est.mechanical;
-  const mechMid = mid(mechTotal);
-  let mechLines = [];
-  if (S.boiler && S.boiler !== 'keep') mechLines.push({
-    label: `Boiler — ${S.boiler}`,
-    note: 'Supply, installation, commissioning, flue',
-    value: mid(BOILER_COST[S.boiler] || [0, 0])
-  });
-  if (S.ufhZone && S.ufhZone !== 'none') {
-    const ufhCost = calcUFH(S);
-    const ufhMid = mid(ufhCost);
-    const ufhType = S.ufhZone === 'wet-rooms' ? 'Electric' : 'Wet';
-    const ufhArea = S.ufhZone === 'wet-rooms' ? `${Math.max(1, S.bathrooms || 1) * 5}m² (wet rooms)` : S.ufhZone === 'ground-floor' ? `${Math.round(gia / floors)}m² (ground floor)` : `${Math.round(gia)}m² (whole house)`;
-    mechLines.push({
-      label: `UFH — ${ufhType} (${S.ufhZone})`,
-      note: `${ufhArea} · £${S.ufhZone === 'wet-rooms' ? '40–75' : '80–130'}/m²`,
-      value: ufhMid
-    });
-  }
-  if (S.ventilation === 'mvhr') {
-    const sz = S.bathrooms <= 1 ? 'small' : S.bathrooms <= 2 ? 'medium' : 'large';
-    mechLines.push({
-      label: 'MVHR system',
-      note: `${sz.charAt(0).toUpperCase() + sz.slice(1)} unit · heat recovery ventilation`,
-      value: mid(MVHR_SIZE[sz])
-    });
-  } else if (S.ventilation === 'extractors') {
-    mechLines.push({
-      label: 'Extractor fans',
-      note: 'Kitchen + bathroom extracts',
-      value: mid(VENT_COST.extractors)
-    });
-  }
-  if (S.smart && S.smart !== 'none') mechLines.push({
-    label: `Smart home / AV — ${S.smart}`,
-    note: S.smart === 'full' ? 'Full AV, lighting control, network' : 'Basic smart controls',
-    value: mid(SMART_COST[S.smart])
-  });
-  if (S.replaceRads === 'yes' && S.radCount > 0 && S.radTier) {
-    const rc = RAD_COST[S.radTier];
-    mechLines.push({
-      label: `Radiators × ${S.radCount} — ${S.radTier}`,
-      note: `${fmtM(rc[0])}–${fmtM(rc[1])} per unit · supply and installation`,
-      value: S.radCount * mid(rc)
-    });
-  }
-
-  // ── KITCHEN ──
-  const kitTotal = est.kitchen;
-  const kitMid = mid(kitTotal);
-  let kitLines = [];
-  if (kitMid > 0 && S.kitTier && S.kitSize) {
-    var _KIT_BASE$S$kitTier, _KIT_INSTALL$S$kitTie;
-    const kBase = ((_KIT_BASE$S$kitTier = KIT_BASE[S.kitTier]) === null || _KIT_BASE$S$kitTier === void 0 ? void 0 : _KIT_BASE$S$kitTier[S.kitSize]) || [0, 0];
-    const kSz = S.kitSize || 'medium';
-    const kInst = ((_KIT_INSTALL$S$kitTie = KIT_INSTALL[S.kitTier]) === null || _KIT_INSTALL$S$kitTie === void 0 ? void 0 : _KIT_INSTALL$S$kitTie[kSz]) || [2500, 3500];
-    const kApp = APP_COST[S.appliances] || [0, 0];
-    kitLines = [{
-      label: `Kitchen units — ${S.kitTier} (${S.kitSize})`,
-      note: S.kitTier === 'designer' ? 'Bulthaup / Poliform / SieMatic' : S.kitTier === 'premium' ? 'Leicht / Hacker / Tom Howley' : 'Howdens / Magnet / Wren',
-      value: mid(kBase)
-    }, {
-      label: 'Installation labour',
-      note: 'Unit hanging, worktop templating, plinth, cornicing',
-      value: mid(kInst)
-    }, ...(mid(kApp) > 0 ? [{
-      label: `Appliances — ${S.appliances}`,
-      note: S.appliances === 'premium' ? 'Miele / Gaggenau' : S.appliances === 'standard' ? 'Bosch / Neff' : 'Fully specified package',
-      value: mid(kApp)
-    }] : [])];
-  }
-
-  // ── BATHROOMS ──
-  const bathTotal = est.bath;
-  const bathMid = mid(bathTotal);
-  let bathLines = [];
-  if (S.bathrooms > 0 && S.bathTier) {
-    const bC = BATH_COST[S.bathTier];
-    bathLines.push({
-      label: `Full bathrooms × ${S.bathrooms} — ${S.bathTier}`,
-      note: S.bathTier === 'designer' ? 'V+A / Dornbracht / Bisazza' : S.bathTier === 'premium' ? 'Duravit / Geberit / Hansgrohe Metropol' : 'Roca / Ideal Standard / Grohe',
-      value: S.bathrooms * mid(bC)
-    });
-    if (S.freestandingBath && S.freestandingBath !== 'none') bathLines.push({
-      label: 'Freestanding bath uplift',
-      note: 'Premium bath supply and specialist plumber fit',
-      value: mid(FREE_BATH[S.freestandingBath])
-    });
-    if (S.cloakrooms > 0) bathLines.push({
-      label: `Cloakrooms × ${S.cloakrooms}`,
-      note: 'WC + basin only — at bathroom tier rate',
-      value: mid(est.cloak)
-    });
-  }
-
-  // ── FINISHES ──
-  const finishTotal = est.finishes;
-  const finishMid = mid(finishTotal);
-  let finishLines = [];
-  if (finishMid > 0) {
-    const fr = FLOOR_RATE[S.flooring] || [0, 0];
-    const dr = DECO_RATE[S.decoration] || [0, 0];
-    const sr = SKIRT_RATE[S.skirtings] || [0, 0];
-    const partialWall = S.scope === 'partial' ? est.wallArea * calcPartialMask(S).giaFrac : est.wallArea;
-    const partialSk = S.scope === 'partial' ? est.skirtingLM * calcPartialMask(S).giaFrac : est.skirtingLM;
-    const flooringArea = Math.max(10, getM2(S.giaRaw, S.giaUnit) - (S.bathrooms || 0) * 5 - (S.cloakrooms || 0) * 2);
-    if (mid(fr) > 0) finishLines.push({
-      label: `Flooring — ${S.flooring}`,
-      note: `${Math.round(flooringArea)}m² × £${mid(fr)}/m² (bathrooms excluded — tiled in Bathrooms section)`,
-      value: Math.round(flooringArea * mid(fr))
-    });
-    if (mid(dr) > 0) finishLines.push({
-      label: `Decoration — ${S.decoration}`,
-      note: `${Math.round(partialWall)}m² wall area × £${mid(dr)}/m²`,
-      value: Math.round(partialWall * mid(dr))
-    });
-    if (mid(sr) > 0) finishLines.push({
-      label: `Skirtings & architraves — ${S.skirtings}`,
-      note: `${Math.round(partialSk)}lm perimeter × £${mid(sr)}/lm`,
-      value: Math.round(partialSk * mid(sr))
-    });
-  }
-
-  // ── EXTERNAL FABRIC ──
-  const fabTotal = est.fabric;
-  const fabMid = mid(fabTotal);
-  let fabLines = [];
-  if ((_S$windowTypes = S.windowTypes) !== null && _S$windowTypes !== void 0 && _S$windowTypes.includes('replace') && S.replaceCount > 0) fabLines.push({
-    label: `Window replacement × ${S.replaceCount}`,
-    note: 'Like-for-like supply and installation',
-    value: S.replaceCount * mid(WINDOW_UNIT.replace)
-  });
-  if ((_S$windowTypes2 = S.windowTypes) !== null && _S$windowTypes2 !== void 0 && _S$windowTypes2.includes('new') && S.newOpenings > 0) fabLines.push({
-    label: `New window openings × ${S.newOpenings}`,
-    note: 'Structural opening, lintel, reveals, window unit',
-    value: S.newOpenings * mid(WINDOW_UNIT.new)
-  });
-  if ((_S$windowTypes3 = S.windowTypes) !== null && _S$windowTypes3 !== void 0 && _S$windowTypes3.includes('sash') && S.sashCount > 0) fabLines.push({
-    label: `Sash restoration × ${S.sashCount}`,
-    note: 'Full overhaul, reweighting, draught seals',
-    value: S.sashCount * mid(WINDOW_UNIT.sash)
-  });
-  if (S.doors && S.doors !== 'none') fabLines.push({
-    label: `External door(s) — ${S.doors}`,
-    note: 'Supply, installation, frame, hardware',
-    value: mid(DOOR_COST[S.doors])
-  });
-  if (S.rooflights && S.rooflights !== 'none') fabLines.push({
-    label: `Rooflights — ${S.rooflights}`,
-    note: 'Structural opening, curb, glazed unit',
-    value: mid(ROOF_COST[S.rooflights])
-  });
-
-  // ── EXTERNAL WORKS ──
-  let extLines = [];
-  if (S.external.includes('garden') && S.gardenSize) {
-    const gr = GARDEN_RATE[S.gardenSize];
-    const gm2 = GARDEN_M2[S.gardenSize];
-    extLines.push({
-      label: `Garden / landscaping — ${S.gardenSize} (est. ${gm2}m²)`,
-      note: 'Hard/soft landscaping, drainage, lighting allowance',
-      value: Math.round(gm2 * mid(gr))
-    });
-  }
-  if (S.external.includes('facade')) extLines.push({
-    label: 'Façade repairs',
-    note: 'Repointing, render, stonework — not painting',
-    value: mid(EXT_COSTS.facade)
-  });
-
-  // ── STATUTORY FEES ──
-  const feeTotal = est.fees;
-  const feeMid = mid(feeTotal);
-  let feeLines = [];
-  // Building control — London residential: scales with GIA
-  const bcFee = gia < 75 ? 700 : gia < 150 ? 950 : gia < 250 ? 1300 : gia < 400 ? 1800 : 2500;
-  feeLines.push({
-    label: 'Building control',
-    note: `Full plans application + inspections · ${Math.round(gia)}m² property`,
-    value: bcFee
-  });
-  if (S.listed && S.listed !== 'none') {
-    const lbcCost = getLBCFee(S);
-    const lbcLabel = S.listed === 'grade1' ? 'Grade I' : S.listed === 'grade2star' ? 'Grade II*' : 'Grade II';
-    feeLines.push({
-      label: `Listed Building Consent — ${lbcLabel}`,
-      note: 'Application, heritage consultant report, statutory fee',
-      value: lbcCost
-    });
-  }
-  if (S.tenure === 'leasehold') feeLines.push({
-    label: 'Licence to Alter',
-    note: 'Freeholder approval — solicitor and surveyor fees',
-    value: mid([1500, 3000])
-  });
-  const hasStructFee = hasStruct && ['semi', 'terrace', 'flat'].includes(S.arrangement || (['period-flat', 'newbuild-flat'].includes(S.propertyType) ? 'flat' : null));
-  if (hasStructFee) feeLines.push({
-    label: 'Party Wall Act',
-    note: 'Surveyor appointment, award, notifications',
-    value: mid([900, 2500])
-  });
-  // CDM/Principal Designer included in Prelims (PM fee) for projects under £500k
-  // Only add separately for larger projects
-  if (est && est.total && est.total[0] > 500000) {
-    feeLines.push({
-      label: 'CDM / Principal Designer',
-      note: 'Separate appointment required — project exceeds £500k threshold',
-      value: Math.round(feeMid * 0.08)
-    });
-  }
-  const remainFees = feeMid - feeLines.reduce((s, l) => s + l.value, 0);
-  // Structural engineer only when structural works are in scope
-  // Listed building always needs heritage consultant (already in LBC line)
-  if (hasStruct && remainFees > 200) feeLines.push({
-    label: 'Structural engineer',
-    note: 'Structural calculations, beam sizing, building control sign-off',
-    value: remainFees
-  });
-
-  // ── CONTINGENCY ──
-  const contMid = mid(est.cont);
-  const contRate = est.cr;
-  const contReason = S.listed && S.listed !== 'none' ? 'Listed building — highest discovery risk' : hasStruct ? 'Structural works — elevated discovery risk' : S.scope === 'full' ? 'Full refurbishment scope' : S.scope === 'partial' ? 'Partial scope' : 'Kit-bath / targeted scope';
-
-  // ── VARIANCE DRIVERS ──
-  const drivers = [];
-  if (S.listed && S.listed !== 'none') drivers.push(`Listed building (${S.listed}): specialist trade availability, consent conditions, and material restrictions are the primary unknowns.`);
-  if (S.lastRefurb === 'never' || S.lastRefurb === '20plus') drivers.push(`Property not refurbished in 20+ years: concealed services condition (knob-and-tube wiring, lead pipes, lath & plaster) is the main source of cost variance.`);
-  if (S.buildingAge === 'pre1900') drivers.push(`Pre-1900 construction: non-standard dimensions, solid walls, and substrate variability affect plastering and finishes rates.`);
-  if (hasStruct) drivers.push(`Structural alterations: ground conditions, beam sizing, and building control hold points carry programme and cost uncertainty.`);
-  if (S.zone === 'z1') drivers.push(`Zone 1 location: contractor availability, parking restrictions, and material delivery logistics add 8–12% to preliminaries vs outer London.`);
-  if (drivers.length === 0) drivers.push(`No elevated risk factors identified. The primary variance in this estimate is specification — final costs will depend on product selections made at PCSA stage.`);
-
-  // ── PROGRAMME BREAKDOWN ──
-  let progLines = [];
-  if (est.timeline) {
-    const tl = est.timeline;
-    const fw = tl.fmtW;
-    progLines.push({
-      phase: 'PRE-CONSTRUCTION',
-      weeks: fw(tl.preConstruction.total.weeks),
-      note: 'Parallel paths — longest governs',
-      isHeader: true
-    });
-    Object.values(tl.preConstruction.gates).forEach(g => {
-      progLines.push({
-        phase: g.label,
-        weeks: fw(g.weeks),
-        note: g.note || '',
-        isHeader: false
-      });
-    });
-    progLines.push({
-      phase: 'CONSTRUCTION',
-      weeks: fw(tl.construction.total.weeks),
-      note: 'Sequential phases, critical path',
-      isHeader: true
-    });
-    tl.construction.phases.forEach(p => {
-      const isCont = p.label.includes('Contingency');
-      progLines.push({
-        phase: p.label,
-        weeks: fw(p.weeks),
-        note: isCont ? 'Named buffer — not hidden inside phase durations' : p.note || '',
-        isHeader: false,
-        isAccent: isCont
-      });
-    });
-    progLines.push({
-      phase: 'Defects Liability Period',
-      weeks: fw(tl.dlp.weeks),
-      note: 'Post practical completion — retention held',
-      isHeader: false
-    });
-    progLines.push({
-      phase: 'TOTAL FROM TODAY',
-      weeks: fw(tl.grandTotal.weeks),
-      note: 'Inc. pre-construction and DLP',
-      isHeader: true
-    });
-  }
-
-  // ── BESPOKE FURNITURE LINES ──
-  const furnTotal = est.furn;
-  const furnMid = mid(furnTotal);
-  const furnLM = S.furnitureLM || 0;
-  const furnHeightLabel = S.furnitureHeight === 'full' ? 'full height 2.4m' : S.furnitureHeight === 'tall' ? 'tall/double 2.7m+' : 'standard 2.2m';
-  const hMod = FURN_HEIGHT_MOD[S.furnitureHeight] || 1;
-  const furnRate = FURN_COST_PER_LM[S.furnitureTier] || [0, 0];
-  let furnLines = [];
-  if (furnMid > 0 && furnLM > 0 && S.furnitureTier) {
-    const carcassShare = Math.round(furnMid * 0.55);
-    const frontsShare = Math.round(furnMid * 0.25);
-    const fitShare = furnMid - carcassShare - frontsShare;
-    furnLines = [{
-      label: `Carcass, internals & shelving — ${S.furnitureTier}`,
-      note: `${furnLM}lm × ${furnHeightLabel} · £${mid(furnRate)}/lm`,
-      value: carcassShare
-    }, {
-      label: 'Fronts, hardware & soft-close',
-      note: S.furnitureTier === 'designer' ? 'Bespoke painted or veneered, handleless' : S.furnitureTier === 'premium' ? 'Solid or lacquered fronts, push-to-open' : 'Slab or shaker fronts, soft-close hinges',
-      value: frontsShare
-    }, {
-      label: 'Site fitting, scribing & making good',
-      note: 'Delivery coordination, installation, scribing to walls, filler panels',
-      value: fitShare
-    }];
-  }
-  return {
-    sections: [{
-      id: 'prelims',
-      title: 'Preliminaries',
-      total: prelimTotal,
-      lines: prelimLines
-    }, {
-      id: 'demo',
-      title: 'Strip-out & Demolition',
-      total: demoTotal,
-      lines: demoLines
-    }, {
-      id: 'sworks',
-      title: 'Structural Works',
-      total: sWorkTotal,
-      lines: sWorkLines
-    }, {
-      id: 'structure',
-      title: 'Structure',
-      total: structTotal,
-      lines: structLines
-    }, {
-      id: 'elec',
-      title: 'Electrical',
-      total: elecTotal,
-      lines: elecLines
-    }, {
-      id: 'plumb',
-      title: 'Plumbing',
-      total: plumbTotal,
-      lines: plumbLines
-    }, {
-      id: 'mech',
-      title: 'Mechanical',
-      total: mechTotal,
-      lines: mechLines
-    }, {
-      id: 'kitchen',
-      title: 'Kitchen',
-      total: kitTotal,
-      lines: kitLines
-    }, {
-      id: 'bath',
-      title: 'Bathrooms & Cloakrooms',
-      total: add(bathTotal, est.cloak),
-      lines: bathLines
-    }, {
-      id: 'furn',
-      title: 'Bespoke Furniture',
-      total: est.furn,
-      lines: furnLines
-    }, {
-      id: 'finishes',
-      title: 'Finishes',
-      total: finishTotal,
-      lines: finishLines
-    }, {
-      id: 'fabric',
-      title: 'External Fabric',
-      total: fabTotal,
-      lines: fabLines
-    }, {
-      id: 'ext',
-      title: 'External Works',
-      total: est.ext,
-      lines: extLines
-    }, {
-      id: 'fees',
-      title: 'Statutory Fees',
-      total: feeTotal,
-      lines: feeLines
-    }],
-    contingency: {
-      total: est.cont,
-      rate: contRate,
-      reason: contReason,
-      mid: contMid
-    },
-    grandTotal: est.total,
-    midpoint: est.mid,
-    varianceDrivers: drivers,
-    programme: progLines,
-    generatedAt: new Date().toLocaleString('en-GB'),
-    ref: generateRef(S)
-  };
-}
-function calcTimeline(S) {
-  if (!S.scope || !S.zone || !S.giaRaw) return null;
-  const gia = getM2(S.giaRaw, S.giaUnit);
-  const hasStruct = S.structural.length > 0 && !S.structural.includes('none');
-  const effArr = ['period-flat', 'newbuild-flat'].includes(S.propertyType) ? 'flat' : S.arrangement;
-  const sharedBoundary = ['semi', 'terrace', 'flat'].includes(effArr);
-  const modR = ([lo, hi], m) => [lo * m, hi * m];
-  const addR = ([a, b], [c, d]) => [a + c, b + d];
-  const roundR = ([lo, hi]) => [Math.max(0.5, Math.round(lo * 2) / 2), Math.max(0.5, Math.round(hi * 2) / 2)];
-  const fmtW = ([lo, hi]) => lo === hi ? `${lo} wks` : `${lo}–${hi} wks`;
-  let gate1 = {
-    triggered: false
-  };
-  if (S.listed && S.listed !== 'none') {
-    gate1 = {
-      triggered: true,
-      label: 'Listed Building Consent',
-      weeks: S.listed === 'grade1' ? [13, 16] : S.listed === 'grade2star' ? [10, 13] : [8, 12]
-    };
-  }
-  let gate2 = {
-    triggered: false
-  };
-  if (hasStruct && sharedBoundary && (S.structural.includes('walls') || S.structural.includes('extension') || S.structural.includes('basement'))) {
-    gate2 = {
-      triggered: true,
-      label: 'Party Wall Act',
-      weeks: S.structural.includes('basement') ? [8, 14] : [4, 8]
-    };
-  }
-  let gate3 = {
-    triggered: false
-  };
-  if (S.tenure === 'leasehold') {
-    gate3 = {
-      triggered: true,
-      label: 'Licence to Alter',
-      weeks: [3, 6]
-    };
-  }
-  const pcsa = {
-    label: 'Design & Pre-Start',
-    weeks: [4, 6]
-  };
-  const allPreCon = [pcsa, gate1, gate2, gate3].filter(g => g.triggered !== false || g.label === 'Design & Pre-Start');
-  const preConLo = Math.max(...allPreCon.map(g => g.weeks[0]));
-  const preConHi = Math.max(...allPreCon.map(g => g.weeks[1]));
-  const listedMod = S.listed === 'grade1' ? 1.30 : S.listed === 'grade2star' ? 1.25 : S.listed === 'grade2' ? 1.20 : 1.00;
-  const refurbRisk = S.lastRefurb === 'never' || S.lastRefurb === '20plus' ? 1.15 : S.lastRefurb === '10to20' ? 1.08 : S.lastRefurb === '5to10' ? 1.04 : 1.00;
-  const handoverRisk = S.handover === 'furnished' ? 1.08 : S.handover === 'part-cleared' ? 1.04 : 1.00;
-  const condMod = Math.max(refurbRisk, handoverRisk);
-  const ceilMod = S.ceilingHeight === 'double-height' ? 1.20 : S.ceilingHeight === 'tall' ? 1.08 : 1.00;
-  const phMobilisation = {
-    label: 'H1 Mobilisation',
-    weeks: [1, 1],
-    note: 'Site surveys, contractor onboarding, materials procurement, protection of retained items'
-  };
-  // Strip-out — continuous scaling by GIA
-  let sLo, sHi;
-  if (S.demo === 'cosmetic') {
-    sLo = 0.5;
-    sHi = 0.5 + gia / 200;
-  } else if (S.demo === 'targeted') {
-    sLo = 0.5 + gia / 150;
-    sHi = 1 + gia / 100;
-  } else {
-    sLo = 0.5 + gia / 150;
-    sHi = 1 + gia / 100;
-  } // full strip — same formula, period/condition mods handle uplift
-  const phaseStripout = {
-    label: 'Strip-out & Demolition',
-    weeks: roundR(modR(modR([sLo, sHi], condMod), listedMod))
-  };
-  let phaseStructural = {
-    triggered: false
-  };
-  if (hasStruct) {
-    let stLo = 0,
-      stHi = 0;
-    const eM2t = getM2(S.extRaw, S.extUnit) || 0;
-    const lM2t = getM2(S.loftRaw, S.loftUnit) || 0;
-    const bM2t = getM2(S.basRaw, S.basUnit) || 0;
-
-    // Wall removal — fixed, no area needed
-    if (S.structural.includes('walls')) {
-      stLo += 1.5;
-      stHi += 3;
-    }
-
-    // Extension — continuous linear scaling, every m² moves the needle
-    if (S.structural.includes('extension') && eM2t > 0) {
-      const d = S.storeys === 'double';
-      // Single: 3wks base + 0.14/m² lo, 5wks base + 0.20/m² hi
-      // Double: 4wks base + 0.18/m² lo, 7wks base + 0.28/m² hi
-      stLo += d ? 4 + eM2t * 0.18 : 3 + eM2t * 0.14;
-      stHi += d ? 7 + eM2t * 0.28 : 5 + eM2t * 0.20;
-    }
-
-    // Loft — continuous linear scaling
-    if (S.structural.includes('loft') && lM2t > 0) {
-      // 4wks base + 0.16/m² lo, 6wks base + 0.22/m² hi
-      stLo += 4 + lM2t * 0.16;
-      stHi += 6 + lM2t * 0.22;
-    }
-
-    // Basement — continuous scaling, excavation vs fit-out
-    if (S.structural.includes('basement') && bM2t > 0) {
-      const e = S.basType === 'excavation';
-      // Excavation: 10wks base + 0.20/m² lo, 16wks base + 0.30/m² hi
-      // Fit-out: 3wks base + 0.08/m² lo, 6wks base + 0.14/m² hi
-      stLo += e ? 10 + bM2t * 0.20 : 3 + bM2t * 0.08;
-      stHi += e ? 16 + bM2t * 0.30 : 6 + bM2t * 0.14;
-    }
-
-    // Only trigger the phase if at least one item has non-zero weeks
-    if (stLo > 0) {
-      phaseStructural = {
-        triggered: true,
-        label: 'Structural Works',
-        weeks: roundR(modR(modR([stLo, stHi], condMod), listedMod))
-      };
-    }
-  }
-  const rooms = deriveRooms(S);
-  const totalRooms = rooms.bedrooms + rooms.bathrooms + rooms.cloakrooms + rooms.kitchen + rooms.living + rooms.dining + rooms.hallways + rooms.utility;
-  let m1Lo = 2.5,
-    m1Hi = 4;
-  if (totalRooms > 8) {
-    m1Lo += 0.5;
-    m1Hi += 1;
-  }
-  if (totalRooms > 12) {
-    m1Lo += 0.5;
-    m1Hi += 1;
-  }
-  if (S.scope === 'kit-bath') {
-    m1Lo *= 0.5;
-    m1Hi *= 0.6;
-  }
-  if (S.smart === 'full') {
-    m1Lo += 1;
-    m1Hi += 2;
-  }
-  if (S.ufhZone && S.ufhZone !== 'none') {
-    const isWhole = S.ufhZone === 'whole-house' || S.ufhZone === 'ground-floor' && (S.floors || 1) <= 1;
-    m1Lo += isWhole ? 1.5 : 0.5;
-    m1Hi += isWhole ? 2.5 : 1;
-  }
-  if (S.floors >= 3) {
-    m1Lo += 0.5;
-    m1Hi += 1;
-  }
-  const phase1stFix = {
-    label: '1st Fix MEP',
-    weeks: roundR(modR([m1Lo, m1Hi], listedMod))
-  };
-  let pLo = 1.5,
-    pHi = 3;
-  if (gia > 100) {
-    pLo += 0.5;
-    pHi += 1;
-  }
-  if (gia > 180) {
-    pLo += 0.5;
-    pHi += 1;
-  }
-  const phaseCloseup = {
-    label: 'Close-up & Plaster',
-    weeks: roundR(modR(modR([pLo, pHi], ceilMod), listedMod))
-  };
-  const phaseDryTime = {
-    label: 'Plaster Dry Time',
-    weeks: [2, 3]
-  };
-
-  // 2nd fix — dynamic based on spec complexity
-  let m2Lo = 1.5,
-    m2Hi = 2.5;
-  if (totalRooms > 8) {
-    m2Lo += 0.5;
-    m2Hi += 0.5;
-  }
-  if (S.smart === 'full') {
-    m2Lo += 1;
-    m2Hi += 2;
-  }
-  if (S.boiler !== 'keep') {
-    m2Lo += 0.5;
-    m2Hi += 0.5;
-  }
-  const {
-    sockets,
-    switches,
-    radCount
-  } = calcComponents(rooms, S.ceilingHeight);
-  m2Lo += sockets / 50;
-  m2Hi += sockets / 35;
-  if (radCount > 0) {
-    m2Lo += radCount / 10;
-    m2Hi += radCount / 7;
-  }
-  if (S.ventilation === 'mvhr') {
-    m2Lo += 0.5;
-    m2Hi += 1;
-  }
-  const phase2ndFix = {
-    label: '2nd Fix & Commissioning',
-    weeks: roundR(modR([m2Lo, m2Hi], listedMod))
-  };
-  let wLo = 0,
-    wHi = 0;
-  const bTime = S.bathTier === 'designer' ? [1.5, 2.5] : S.bathTier === 'premium' ? [1, 1.5] : [0.5, 1];
-  wLo += rooms.bathrooms * bTime[0];
-  wHi += rooms.bathrooms * bTime[1];
-  wLo += rooms.cloakrooms * 0.5;
-  wHi += rooms.cloakrooms * 0.5;
-  if (S.freestandingBath && S.freestandingBath !== 'none') {
-    wLo += 0.5;
-    wHi += 1;
-  }
-  if (S.kitchenScope === 'replace' || S.kitchenScope === 'new-layout') {
-    const kT = S.kitTier === 'designer' ? [2, 3.5] : S.kitTier === 'premium' ? [1.5, 2.5] : [1, 1.5];
-    wLo += kT[0];
-    wHi += kT[1];
-  }
-  if (wLo > 0) {
-    wLo = Math.max(1, wLo);
-    wHi = Math.max(1.5, wHi);
-  }
-  const phaseWetAreas = {
-    label: 'Wet Areas',
-    weeks: wLo > 0 ? roundR(modR([wLo, wHi], listedMod)) : [0, 0]
-  };
-  const decoMod = S.decoration === 'bespoke' ? 1.30 : S.decoration === 'repaint-feature' ? 1.15 : 1.00;
-  const floorMod = S.flooring === 'solid-wood' ? 1.20 : S.flooring === 'eng-wood' ? 1.10 : 1.00;
-  let fLo = 1.5,
-    fHi = 3;
-  if (gia > 100) {
-    fLo += 0.5;
-    fHi += 1;
-  }
-  if (gia > 180) {
-    fLo += 0.5;
-    fHi += 1;
-  }
-  const decoPhFin = modR(modR(modR(modR([fLo, fHi], decoMod), floorMod), ceilMod), listedMod);
-  const phaseFurnitureFit = S.bespokeFurniture === 'yes' && S.furnitureLM > 0 ? {
-    label: 'Bespoke Furniture — Delivery & Fit',
-    weeks: roundR([Math.max(0.5, S.furnitureLM * 0.05), Math.max(1, S.furnitureLM * 0.1)])
-  } : null;
-  const phaseFinishes = {
-    label: 'Decoration & Painting',
-    weeks: roundR(decoPhFin)
-  };
-  const phaseSnagging = {
-    label: 'Snagging & Sign-off',
-    weeks: S.scope === 'full' ? [1, 2] : [0.5, 1]
-  };
-  const contRate = S.listed && S.listed !== 'none' ? 0.15 : hasStruct ? 0.12 : S.scope === 'full' ? 0.10 : S.scope === 'partial' ? 0.08 : 0.06;
-  const phases = [phMobilisation, phaseStripout, ...(phaseStructural.triggered ? [phaseStructural] : []), phase1stFix, phaseCloseup, phaseDryTime, phase2ndFix, ...(phaseWetAreas.weeks[1] > 0 ? [phaseWetAreas] : []), ...(phaseFurnitureFit ? [phaseFurnitureFit] : []), phaseFinishes, phaseSnagging];
-  const conRawLo = phases.reduce((s, p) => s + p.weeks[0], 0);
-  const conRawHi = phases.reduce((s, p) => s + p.weeks[1], 0);
-  const contWeeks = roundR([conRawLo * contRate, conRawHi * contRate]);
-  const programmeContingency = {
-    label: `Programme Contingency (${Math.round(contRate * 100)}%)`,
-    weeks: contWeeks
-  };
-  const constructionTotal = {
-    weeks: roundR([conRawLo + contWeeks[0], conRawHi + contWeeks[1]])
-  };
-  const dlp = {
-    label: 'Defects Liability Period',
-    weeks: [4, 4]
-  };
-  const totalLo = preConLo + constructionTotal.weeks[0] + 4;
-  const totalHi = preConHi + constructionTotal.weeks[1] + 4;
-  const procurementFlags = [];
-  if (S.kitTier === 'designer') procurementFlags.push('Designer kitchen: 8–14 week lead time. Order at PCSA.');else if (S.kitTier === 'premium') procurementFlags.push('Premium kitchen: 6–10 week lead time from order.');
-  if (S.bathTier === 'designer') procurementFlags.push('Designer sanitaryware: 4–8 week lead time. Order at PCSA.');
-  if (S.bespokeFurniture === 'yes') procurementFlags.push('Bespoke furniture: 6–10 week lead time from order.');
-  if (S.smart === 'full') procurementFlags.push('Full smart home system: specification must begin at PCSA.');
-  return {
-    preConstruction: {
-      total: {
-        weeks: [preConLo, preConHi]
-      },
-      gates: {
-        pcsa,
-        ...(gate1.triggered && {
-          listedConsent: gate1
-        }),
-        ...(gate2.triggered && {
-          partyWall: gate2
-        }),
-        ...(gate3.triggered && {
-          licenceToAlter: gate3
-        })
-      }
-    },
-    construction: {
-      total: constructionTotal,
-      phases: [...phases, programmeContingency],
-      contingencyRate: contRate
-    },
-    dlp,
-    procurementFlags,
-    grandTotal: {
-      weeks: roundR([totalLo, totalHi])
-    },
-    fmtW
-  };
-}
+const fmtW = ([lo, hi]) => lo === hi ? `${lo} wks` : `${lo}–${hi} wks`;
 
 // ── DESIGN COMPONENTS ─────────────────────────────────────────
 
@@ -1785,7 +139,8 @@ const Section = ({
   if (!visible) return null;
   const hasProgress = outOf !== undefined && answered !== undefined;
   const pct = hasProgress ? answered / outOf : 0;
-  return /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("section", {
+    "aria-label": title,
     style: {
       marginBottom: 28,
       animation: 'fadeIn 350ms ease both'
@@ -2186,40 +541,58 @@ const ContactModal = ({
 }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  // CRIT-02 / CRIT-06: GDPR consent checkbox. Submit disabled until ticked.
+  const [consent, setConsent] = useState(false);
   // phase: 'capture' | 'sending' | 'confirmed' | 'error'
   const [phase, setPhase] = useState('capture');
   const [confirmedRef, setConfirmedRef] = useState('');
-
-  // On confirmation, redirect to the Myrmex homepage after 3 seconds so the
-  // user has just long enough to see the ref before moving on.
-  React.useEffect(() => {
-    if (phase !== 'confirmed') return;
-    const timer = setTimeout(() => {
-      window.location.href = 'https://myrmexgroup.co.uk';
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [phase]);
+  // HIGH-10: focus trap container ref
+  const modalRef = useRef(null);
 
   const nameValid = name.trim().length > 0;
-  const emailValid = email.trim().length > 0 && email.includes('@') && email.includes('.');
-  const formValid = nameValid && emailValid;
+  // MED-01: stricter email regex — was email.includes('@') && email.includes('.')
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+  const formValid = nameValid && emailValid && consent;
+
+  // HIGH-10: focus trap. On Tab from last focusable, cycle to first; on
+  // Shift+Tab from first, cycle to last. ESC closes the modal.
+  useEffect(() => {
+    const node = modalRef.current;
+    if (!node) return;
+    const handler = (e) => {
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key !== 'Tab') return;
+      const focusable = node.querySelectorAll('input, button, [tabindex="0"]');
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    };
+    node.addEventListener('keydown', handler);
+    return () => node.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   const handleSend = () => {
     if (!formValid || phase !== 'capture') return;
-    const est = calcDetailedBreakdown(S, rawEst);
-    if (!est) return;
-    const ref = est.ref;
+    if (!rawEst) return;
+    // HIGH-02: client no longer sends est. Server computes it from state via pricing.js.
+    // Ref is generated server-side; we don't have it client-side anymore, so let the
+    // backend assign one (the response includes it).
+    const ref = (rawEst && rawEst.breakdown && rawEst.breakdown.ref) || ('MG-LOCAL' + Date.now().toString(36).toUpperCase().slice(-2));
     const payload = {
+      type: 'quote-email',
       ref,
       name: name.trim(),
       email: email.trim(),
       state: S,
-      est
+      calculatorVersion: CALCULATOR_VERSION
     };
     setPhase('sending');
-    fetch('https://mg-submit-production.up.railway.app/submit', {
+    fetch(`${API_BASE}/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'omit',
       body: JSON.stringify(payload)
     })
       .then(r => r.json())
@@ -2261,8 +634,12 @@ const ContactModal = ({
 
   return /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
+    role: "dialog",
+    "aria-modal": "true",
+    "aria-label": "Full breakdown report",
+    ref: modalRef,
     onClick: e => {
-      if (phase !== 'confirmed' && e.target === e.currentTarget) onClose();
+      if (e.target === e.currentTarget) onClose();
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "modal-card"
@@ -2281,12 +658,10 @@ const ContactModal = ({
       /*#__PURE__*/React.createElement("span", {
         style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase' }
       }, "MG-REPORT"),
-      phase !== 'confirmed'
-        ? /*#__PURE__*/React.createElement("button", {
+      /*#__PURE__*/React.createElement("button", {
             onClick: onClose,
             style: { background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }
           }, "\xD7")
-        : /*#__PURE__*/React.createElement("span", { style: { width: 18 } })
     ),
 
     /* ── STATE A: CAPTURE ── */
@@ -2317,8 +692,30 @@ const ContactModal = ({
         })
       ),
 
+      /* CRIT-02 / CRIT-06 — processor disclosure (above email input) */
+      /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontFamily: 'IBM Plex Mono,monospace',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.4)',
+          lineHeight: 1.6,
+          marginBottom: 16
+        }
+      },
+        "We'll use your details to send this breakdown and follow up about your project. ",
+        "Your data is processed by Make (automation), Google Sheets (storage, up to 3 months), ",
+        "and Resend (email). See our ",
+        /*#__PURE__*/React.createElement("a", {
+          href: "/privacy",
+          target: "_blank",
+          rel: "noopener",
+          style: { color: 'rgba(0,151,141,0.7)', textDecoration: 'underline' }
+        }, "privacy policy"),
+        "."
+      ),
+
       /* email */
-      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 24 } },
+      /*#__PURE__*/React.createElement("div", { style: { marginBottom: 16 } },
         /*#__PURE__*/React.createElement("label", { style: labelStyle }, "Email address"),
         /*#__PURE__*/React.createElement("input", {
           id: "mg-modal-email",
@@ -2331,6 +728,31 @@ const ContactModal = ({
           onFocus: e => e.target.style.borderColor = 'rgba(0,151,141,0.5)',
           onBlur: e => e.target.style.borderColor = 'rgba(255,255,255,0.12)'
         })
+      ),
+
+      /* CRIT-02 / CRIT-06 — consent checkbox (above submit) */
+      /*#__PURE__*/React.createElement("label", {
+        style: {
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          marginBottom: 20,
+          cursor: 'pointer',
+          fontFamily: 'Space Grotesk,sans-serif',
+          fontSize: 13,
+          color: 'rgba(255,255,255,0.55)',
+          lineHeight: 1.5
+        }
+      },
+        /*#__PURE__*/React.createElement("input", {
+          type: "checkbox",
+          checked: consent,
+          onChange: e => setConsent(e.target.checked),
+          style: { marginTop: 3, accentColor: '#00978D', width: 16, height: 16, flexShrink: 0 }
+        }),
+        /*#__PURE__*/React.createElement("span", null,
+          "I agree to Myrmex Group processing my details to send the breakdown and contact me about this enquiry."
+        )
       ),
 
       /* SEND IT button */
@@ -2379,7 +801,7 @@ const ContactModal = ({
       }, "Compiling your breakdown\u2026")
     ),
 
-    /* ── STATE B: CONFIRMATION ── */
+    /* ── STATE B: CONFIRMATION — inline CTAs ── */
     phase === 'confirmed' && /*#__PURE__*/React.createElement("div", {
       style: { textAlign: 'center', padding: '24px 0' }
     },
@@ -2387,28 +809,33 @@ const ContactModal = ({
         style: { fontFamily: 'Orbitron,sans-serif', fontSize: 9, letterSpacing: 2.5, color: 'var(--teal)', textTransform: 'uppercase', marginBottom: 20 }
       }, "Confirmed"),
       /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 28, color: 'var(--teal)', marginBottom: 20 }
-      }, "\u2713"),
-      /*#__PURE__*/React.createElement("div", {
         style: { fontFamily: 'Space Grotesk,sans-serif', fontWeight: 500, fontSize: 18, color: 'var(--white)', marginBottom: 12, lineHeight: 1.3 }
       }, "Your breakdown is on its way."),
       /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6, marginBottom: 28 }
+      }, "If the number works, the next move is a conversation."),
+      /*#__PURE__*/React.createElement("a", {
+        href: '/START/index.html',
         style: {
-          fontFamily: 'IBM Plex Mono,monospace',
-          fontSize: 13,
-          color: 'var(--teal)',
-          background: 'rgba(0,151,141,0.08)',
-          border: '1px solid rgba(0,151,141,0.2)',
-          borderRadius: 4,
-          padding: '10px 16px',
-          margin: '0 auto 16px',
-          letterSpacing: 2,
-          display: 'inline-block'
+          display: 'block', width: '100%', padding: '13px 0', background: 'var(--orange)',
+          border: '1px solid var(--orange)', borderRadius: 4,
+          fontFamily: 'Space Grotesk,sans-serif', fontWeight: 600, fontSize: 13,
+          color: 'var(--white)', cursor: 'pointer', letterSpacing: 1,
+          textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none',
+          transition: 'all 150ms', marginBottom: 12
         }
-      }, confirmedRef),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 1.6 }
-      }, "Chaos is Optional")
+      }, "LET\u2019S DO IT"),
+      /*#__PURE__*/React.createElement("a", {
+        href: '#calendly',
+        style: {
+          display: 'block', width: '100%', padding: '13px 0', background: 'transparent',
+          border: '1px solid rgba(255,255,255,0.35)', borderRadius: 4,
+          fontFamily: 'Space Grotesk,sans-serif', fontWeight: 600, fontSize: 13,
+          color: 'var(--white)', cursor: 'pointer', letterSpacing: 1,
+          textTransform: 'uppercase', textAlign: 'center', textDecoration: 'none',
+          transition: 'all 150ms'
+        }
+      }, "BOOK A CALL")
     ),
 
     /* ── ERROR ── */
@@ -2515,6 +942,9 @@ function Calculator() {
     purpose: null
   });
   const [showModal, setShowModal] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const calcTimerRef = useRef(null);
   const set = useCallback((k, v) => setS(p => ({
     ...p,
     [k]: v
@@ -2561,7 +991,19 @@ function Calculator() {
       };
     });
   }, []);
-  const est = useMemo(() => recalc(S), [S]);
+  // Phase 4: server-side estimate via /api/estimate.
+  // CRITICAL — dependency is JSON.stringify(S), NOT S itself. S is a fresh object
+  // every render; reference equality would fire the effect on every render and
+  // produce a fetch→setState→render→fetch cascade that the 450ms debounce
+  // only partially contains. Serialising 71 keys takes microseconds.
+  const [est, setEst] = useState(null);
+  const [estLoading, setEstLoading] = useState(false);
+  const [estError, setEstError] = useState(null);
+  const sKey = JSON.stringify(S);
+  useEffect(() => {
+    fetchEstimate(S, setEst, setEstLoading, setEstError);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sKey]);
   const TOTAL = 16;
   const isFlat = ['period-flat', 'newbuild-flat'].includes(S.propertyType);
   const isHouse = ['period-house', 'newbuild-house'].includes(S.propertyType);
@@ -2597,6 +1039,24 @@ function Calculator() {
   [s1Done, s2Done, s3Done, s4Done, s5Done, s6Done, s7Done, s8Done, s9Done, s10Done, s11Done, s12Done, s13Done, s14Done, s15Done, s16Done].forEach(d => {
     if (d) progress++;
   });
+
+  // 3-second calculating animation before showing estimate
+  useEffect(() => {
+    if (est && allDone) {
+      if (!showResult && !isCalculating) {
+        setIsCalculating(true);
+        calcTimerRef.current = setTimeout(() => {
+          setIsCalculating(false);
+          setShowResult(true);
+        }, 3000);
+      }
+    } else {
+      if (calcTimerRef.current) clearTimeout(calcTimerRef.current);
+      setShowResult(false);
+      setIsCalculating(false);
+    }
+    return () => { if (calcTimerRef.current) clearTimeout(calcTimerRef.current); };
+  }, [est && allDone]);
 
   // Per-section answered counts
   const s1Ans = [S.propertyType, S.tenure, S.listed, S.buildingAge, effectiveArrangement, S.zone, giaValid ? true : null, S.bedrooms > 0 ? true : null, S.floors > 0 ? true : null, S.ceilingHeight, S.access, S.gfLayout, S.roomsLargestFloor > 0 ? true : null].filter(Boolean).length;
@@ -2644,7 +1104,20 @@ function Calculator() {
     onClose: () => setShowModal(false),
     S: S,
     rawEst: est
-  }), /*#__PURE__*/React.createElement("div", {
+  }),
+  /* HIGH-08: Z1 entry framing — one line above the calculator */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 1120,
+      margin: '0 auto',
+      padding: '32px 80px 0',
+      fontFamily: 'Space Grotesk,sans-serif',
+      fontSize: 14,
+      color: 'rgba(255,255,255,0.4)',
+      marginBottom: -8
+    }
+  }, "An indicative budget range for your property — not a binding quote."),
+  /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 1120,
       margin: '0 auto',
@@ -4007,10 +2480,10 @@ function Calculator() {
       fontFamily: 'Orbitron,sans-serif',
       fontSize: 9,
       letterSpacing: 2,
-      color: est && allDone ? 'var(--teal)' : 'rgba(255,255,255,0.2)',
+      color: showResult || isCalculating ? 'var(--teal)' : 'rgba(255,255,255,0.2)',
       textTransform: 'uppercase'
     }
-  }, est && allDone ? 'LIVE' : 'STANDBY')), /*#__PURE__*/React.createElement("div", {
+  }, showResult ? 'LIVE' : (isCalculating ? 'CALCULATING' : 'STANDBY'))), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '22px 20px 18px',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -4036,7 +2509,57 @@ function Calculator() {
       textTransform: 'uppercase',
       marginBottom: 14
     }
-  }, "Live estimate \xB7 ex. VAT"), est && allDone ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "Live estimate \xB7 ex. VAT"),
+    /* CRIT-03: structural-only with no real items — explicit gate message */
+    (showResult && est === null && S.scope === 'structural-only' && (!S.structural || S.structural.length === 0 || S.structural.every(x => x === 'none'))) ? /*#__PURE__*/React.createElement("div", {
+      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.25)', padding: '20px 0', textAlign: 'center', lineHeight: 1.6 }
+    }, "Select at least one structural item before we can show a range.") :
+    /* MED-02: kit-bath with no kitchen/bath/cloak — explicit gate message */
+    (showResult && est === null && S.scope === 'kit-bath' && (S.kitchenScope === 'none' || !S.kitchenScope) && (S.bathrooms || 0) === 0 && (S.cloakrooms || 0) === 0) ? /*#__PURE__*/React.createElement("div", {
+      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.25)', padding: '20px 0', textAlign: 'center', lineHeight: 1.6 }
+    }, "You've selected kitchen & bathroom but haven't chosen either. Pick at least one.") :
+    (isCalculating || estLoading) ? /*#__PURE__*/React.createElement("div", { className: "calc-spinner" }, /*#__PURE__*/React.createElement("div", { className: "calc-spinner-ring" }), /*#__PURE__*/React.createElement("div", { className: "calc-spinner-text" }, "Processing")) : estError ? /*#__PURE__*/React.createElement("div", { style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 12, color: 'rgba(255,255,255,0.3)', padding: '20px 0', textAlign: 'center' } }, estError) :
+    /* HIGH-01: ceiling cap CTA (replaces figures when high > £3M) */
+    (showResult && est && est.ceilingCapped === true) ? /*#__PURE__*/React.createElement(React.Fragment, null,
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 13, color: 'rgba(255,255,255,0.5)', marginBottom: 18, lineHeight: 1.6, paddingBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.05)' }
+      }, "This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement."),
+      /*#__PURE__*/React.createElement("div", {
+        style: { fontFamily: 'Space Grotesk,sans-serif', fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.5, marginBottom: 18 }
+      }, "At this scale, a parametric estimate is indicative at best."),
+      /*#__PURE__*/React.createElement("a", {
+        href: "https://calendly.com/team-myrmexgroup/30min",
+        target: "_blank",
+        rel: "noopener noreferrer",
+        style: {
+          display: 'block',
+          padding: '13px 0',
+          border: '1px solid var(--teal)',
+          borderRadius: 4,
+          fontFamily: 'Space Grotesk,sans-serif',
+          fontWeight: 600,
+          fontSize: 13,
+          color: 'var(--teal)',
+          textAlign: 'center',
+          textDecoration: 'none',
+          letterSpacing: 1,
+          textTransform: 'uppercase'
+        }
+      }, "BOOK A CALL")
+    ) :
+    showResult && est ? /*#__PURE__*/React.createElement(React.Fragment, null,
+    /* CRIT-04: disclaimer moved ABOVE the figures, raised to 13px, white-tinted */
+    /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'IBM Plex Mono,monospace',
+      fontSize: 13,
+      color: 'rgba(255,255,255,0.5)',
+      marginBottom: 14,
+      lineHeight: 1.6,
+      paddingBottom: 12,
+      borderBottom: '1px solid rgba(255,255,255,0.05)'
+    }
+  }, "This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement."), /*#__PURE__*/React.createElement("div", {
     style: {
       fontFamily: 'IBM Plex Mono,monospace',
       fontSize: 11,
@@ -4081,28 +2604,18 @@ function Calculator() {
       fontWeight: 500,
       color: 'var(--white)'
     }
-  }, est.timeline.fmtW(est.timeline.grandTotal.weeks)), /*#__PURE__*/React.createElement("div", {
+  }, fmtW(est.timeline.grandTotal.weeks)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontFamily: 'IBM Plex Mono,monospace',
       fontSize: 10,
       color: 'rgba(255,255,255,0.2)',
       marginTop: 3
     }
-  }, "total from today \xB7 inc. pre-construction")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(0,151,141,0.55)',
-      marginTop: 14,
-      lineHeight: 1.6,
-      paddingTop: 12,
-      borderTop: '1px solid rgba(255,255,255,0.05)'
-    }
-  }, "Contingency (", Math.round(est.cr * 100), "%) shown separately.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'rgba(0,151,141,0.75)'
-    }
-  }, "The PCSA stage is how the range becomes a fixed price."))) : /*#__PURE__*/React.createElement("div", {
+  }, "total from today \xB7 inc. pre-construction"),
+    /* HIGH-09: programme caveat */
+    /*#__PURE__*/React.createElement("div", {
+      style: { fontFamily: 'IBM Plex Mono,monospace', fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 6, fontStyle: 'italic' }
+    }, "Preliminary programme only. Confirmed during PCSA."))) : /*#__PURE__*/React.createElement("div", {
     style: {
       fontFamily: 'IBM Plex Mono,monospace',
       fontSize: 26,
@@ -4114,19 +2627,7 @@ function Calculator() {
     style: {
       padding: '16px 20px 20px'
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontFamily: 'IBM Plex Mono,monospace',
-      fontSize: 10,
-      color: 'rgba(255,255,255,0.25)',
-      lineHeight: 1.7,
-      marginBottom: 14
-    }
-  }, "16 line items \xB7 Phase timeline \xB7 Procurement flags.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'rgba(0,151,141,0.6)'
-    }
-  }, "All of it in one PDF.")), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("button", {
     onClick: () => ready && setShowModal(true),
     style: {
       width: '100%',
@@ -4165,7 +2666,9 @@ function Calculator() {
     onClick: () => {
       var _S$zone3, _S$lastRefurb;
       if (!est || !allDone || (S.programme === 'target' && !S.targetDate)) return;
-      const bd = calcDetailedBreakdown(S, est);
+      // Phase 4: breakdown comes from the API response (est.breakdown), not a client compute.
+      // Server-side calcDetailedBreakdown ran when /api/estimate was called.
+      const bd = est.breakdown;
       if (!bd) return;
       const fmtM = n => n > 0 ? '£' + Math.round(n).toLocaleString('en-GB') : '—';
       const rng = ([lo, hi]) => '£' + Math.round(lo).toLocaleString('en-GB') + ' – ' + '£' + Math.round(hi).toLocaleString('en-GB');
@@ -4344,6 +2847,22 @@ body{font-family:Space Grotesk,sans-serif;color:#111827;background:#fff;font-siz
 }
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(/*#__PURE__*/React.createElement(Calculator, null));
+
+// Report content height to parent so iframe auto-sizes tightly
+(function(){
+  var last = 0;
+  function send(){
+    var h = document.documentElement.scrollHeight;
+    if(h !== last){ last = h; window.parent.postMessage({type:'mg-calc:height', height: h}, '*'); }
+  }
+  if(window.ResizeObserver){
+    new ResizeObserver(send).observe(document.body);
+  } else {
+    setInterval(send, 500);
+  }
+  send();
+})();
+
 </script>
 </body>
 </html>
