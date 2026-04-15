@@ -659,7 +659,7 @@ function ContactModal(props) {
         e('div', { style:{ marginBottom:16 } }, e('label', { style:labelStyle }, 'First name'), e('input', { type:'text', placeholder:'Your first name', value:name, onChange:function(ev){setName(ev.target.value);}, style:inputStyle, onFocus:function(ev){ev.target.style.borderColor='rgba(0,151,141,0.5)';}, onBlur:function(ev){ev.target.style.borderColor='rgba(255,255,255,0.12)';}, autoFocus:true })),
         // CRIT-02 / CRIT-06 — processor disclosure (above email input)
         e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:'rgba(255,255,255,0.4)', lineHeight:1.6, marginBottom:16 } },
-          "We'll use your details to send this breakdown and follow up about your project. Your data is processed by Make (automation), Google Sheets (storage, up to 3 months), and Resend (email). See our ",
+          "We'll use your details to send this breakdown and follow up about your project. Your data is handled securely via third-party services. See our ",
           e('a', { href:'/privacy', target:'_blank', rel:'noopener', style:{ color:'rgba(0,151,141,0.7)', textDecoration:'underline' }}, 'privacy policy'),
           '.'
         ),
