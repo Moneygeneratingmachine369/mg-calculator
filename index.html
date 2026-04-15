@@ -707,6 +707,10 @@ function Calculator() {
   var setMulti = useCallback(function(k, v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; var arr = (n[k] || []).slice(); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx, 1); else arr.push(v); n[k] = arr; return n; }); }, []);
   var toggleStruct = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.structural = ['none']; return n; } var arr = (n.structural || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.structural = arr; return n; }); }, []);
   var toggleExt = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.external = ['none']; n.gardenSize = null; return n; } var arr = (n.external || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.external = arr; return n; }); }, []);
+  // Bug #1: "No window works" is mutually exclusive with all other window
+  // options. Selecting 'none' clears the array and resets the dependent
+  // counts. Selecting any other option removes 'none' from the array.
+  var toggleWindow = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.windowTypes = ['none']; n.replaceCount = 0; n.newOpenings = 0; n.sashCount = 0; return n; } var arr = (n.windowTypes || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.windowTypes = arr; return n; }); }, []);
   useEffect(function() { if (S.propertyType === 'period-flat' || S.propertyType === 'newbuild-flat') set('arrangement', 'flat'); }, [S.propertyType]);
   // MG-SYS-003: server-side estimate via /api/estimate. User clicks
   // "GENERATE ESTIMATE" to fire the fetch explicitly — no automatic
@@ -750,9 +754,28 @@ function Calculator() {
   //   5. Editing any input after reveal clears the figures but keeps the
   //      cooldown ticking (user can't regenerate until it expires).
 
+  // Bug #7: rehydrate the cooldown from sessionStorage on mount so a page
+  // refresh doesn't reset the timer. Uses sessionStorage (not localStorage)
+  // so closing the tab clears it. All calls wrapped in try/catch — some
+  // browsers block sessionStorage in private mode.
+  useEffect(function() {
+    try {
+      var stored = sessionStorage.getItem('mg_cooldown_expires');
+      if (stored) {
+        var remaining = Math.max(0, Math.ceil((Number(stored) - Date.now()) / 1000));
+        if (remaining > 0) setGenCooldown(remaining);
+        else sessionStorage.removeItem('mg_cooldown_expires');
+      }
+    } catch (e) {}
+  }, []);
+
   // Countdown timer for the regeneration cooldown.
   useEffect(function() {
-    if (genCooldown <= 0) return;
+    if (genCooldown <= 0) {
+      // Clean up the stored expiry when the cooldown hits zero naturally.
+      try { sessionStorage.removeItem('mg_cooldown_expires'); } catch (e) {}
+      return;
+    }
     var t = setInterval(function() {
       setGenCooldown(function(c) {
         if (c <= 1) { clearInterval(t); return 0; }
@@ -786,6 +809,8 @@ function Calculator() {
       setEstimateRevealed(true);
       setGenCooldown(300); // 5 minutes
       setSentEstMid(null); // reset sent state so the SEND button re-arms
+      // Bug #7: persist expiry so a page refresh doesn't reset the cooldown.
+      try { sessionStorage.setItem('mg_cooldown_expires', String(Date.now() + 300 * 1000)); } catch (e) {}
     }, function(errMsg) {
       setEstError(errMsg);
       setShowSpinner(false);
@@ -822,14 +847,15 @@ function Calculator() {
           grid(2,[{v:'pre1900',l:'Pre-1900',sub:'+12%'},{v:'1900-1960',l:'1900\u20131960',sub:'+7%'},{v:'1960-2000',l:'1960\u20132000',sub:'+3%'},{v:'post2000',l:'Post-2000',sub:'Baseline'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.buildingAge===t.v,onClick:function(){set('buildingAge',t.v);}});})),
           !isFlat?grid(2,[{v:'detached',l:'Detached'},{v:'semi',l:'Semi-detached'},{v:'terrace',l:'Terrace'},{v:'end-terrace',l:'End terrace'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.arrangement===t.v,onClick:function(){set('arrangement',t.v);}});})):null,
           grid(4,[{v:'z1',l:'Zone 1',sub:'Central'},{v:'z2',l:'Zone 2',sub:'Inner'},{v:'z3',l:'Zone 3',sub:'Outer'},{v:'z4-6',l:'Zone 4\u20136',sub:'Commuter'}].map(function(z){return e(OptBtn,{key:z.v,label:z.l,sub:z.sub,selected:S.zone===z.v,onClick:function(){set('zone',z.v);}});})),
-          e(NumField,{label:'Gross internal area (GIA)',sub:'Total enclosed floor area',value:S.giaRaw,onChange:function(v){set('giaRaw',v);},unit:S.giaUnit,onUnitChange:function(v){set('giaUnit',v);}}),
+          e(NumField,{label:'Gross internal area (GIA)',sub:'Total enclosed floor area',value:S.giaRaw,onChange:function(v){set('giaRaw',Math.min(v,1000));},unit:S.giaUnit,onUnitChange:function(v){set('giaUnit',v);}}),
           S.giaRaw > 0 && !giaValid ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'#EB5324',marginTop:-8,marginBottom:8,display:'flex',alignItems:'center',gap:6}},'\u26A0 Minimum 25m\u00B2 \u2014 below this the estimate is not reliable.') : null,
           giaValid && giaM2 < 35 ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:-8,marginBottom:8}},'\u24D8 Double-check this is the full property area, not a single room.') : null,
+          giaValid && S.giaRaw >= 1000 ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:-8,marginBottom:8}},'\u24D8 Maximum 1,000m\u00B2 \u2014 for larger projects, contact us directly.') :
           giaValid && giaM2 > 600 ? e('div',{style:{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,color:'rgba(255,255,255,0.35)',marginTop:-8,marginBottom:8}},'\u24D8 For projects above 600m\u00B2, contact us directly.') : null
         ),
         // B: Layout
         e(AccSection,{id:'layout',title:'Layout and access',expanded:expanded==='layout',locked:!pA,done:!!pB,onToggle:toggle,chips:pB?[e(Chip,{key:'b',value:S.bedrooms+' bed'}),e(Chip,{key:'f',value:S.floors+' floor'})]:null},
-          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bedrooms',value:S.bedrooms,onChange:function(v){set('bedrooms',v);},min:1}),e(Stepper,{label:'Floors',value:S.floors,onChange:function(v){set('floors',v);},min:1,max:5})),
+          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bedrooms',value:S.bedrooms,onChange:function(v){set('bedrooms',v);},min:1,max:8}),e(Stepper,{label:'Floors',value:S.floors,onChange:function(v){set('floors',v);},min:1,max:5})),
           grid(3,[{v:'standard',l:'Standard',sub:'~2.4m'},{v:'tall',l:'Tall',sub:'~2.9m'},{v:'double-height',l:'Double height',sub:'~3.8m'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.ceilingHeight===t.v,onClick:function(){set('ceilingHeight',t.v);}});})),
           grid(3,[{v:'easy',l:'Easy access',sub:'Street level'},{v:'moderate',l:'Moderate',sub:'+8%'},{v:'difficult',l:'Difficult',sub:'+18%'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.access===t.v,onClick:function(){set('access',t.v);}});})),
           grid(3,[{v:'open-plan',l:'Open plan'},{v:'semi-open',l:'Semi-open'},{v:'cellular',l:'Cellular'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.gfLayout===t.v,onClick:function(){set('gfLayout',t.v);}});})),
@@ -845,15 +871,15 @@ function Calculator() {
           grid(2,[{v:'full',l:'Full refurbishment',sub:'Every system'},{v:'partial',l:'Selected areas',sub:'Defined portion'},{v:'kit-bath',l:'Kitchen + bathrooms',sub:'Wet rooms only'},{v:'structural-only',l:'Structural only',sub:'No finishes'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.scope===t.v,onClick:function(){set('scope',t.v);}});})),
           S.scope==='partial'?e(MultiSel,{label:'Areas included',sub:'Select all that apply',values:S.partialAreas,onToggle:function(v){setMulti('partialAreas',v);},cols:2,options:[{v:'living',l:'Living areas'},{v:'bedrooms',l:'All bedrooms'},{v:'master',l:'Master suite only'},{v:'kitchen',l:'Kitchen'},{v:'bathrooms',l:'Bathrooms'},{v:'one-floor',l:'One floor only'},{v:'excl-bathrooms',l:'Everything except bathrooms'},{v:'services-only',l:'Services only (MEP)'}]}):null,
           grid(3,[{v:'full',l:'Full strip',sub:'To structure'},{v:'targeted',l:'Targeted',sub:'Select rooms'},{v:'cosmetic',l:'Cosmetic only',sub:'Surface'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.demo===t.v,onClick:function(){set('demo',t.v);}});})),
-          S.demo==='targeted'?e(Stepper,{label:'Rooms to strip out',value:S.demoRooms,onChange:function(v){set('demoRooms',v);},min:0,max:12}):null
+          S.demo==='targeted'?e(Stepper,{label:'Rooms to strip out',value:S.demoRooms,onChange:function(v){set('demoRooms',v);},min:0,max:15}):null
         ),
         // E: Fabric
         e(AccSection,{id:'fabric',title:'Building fabric',expanded:expanded==='fabric',locked:!pD,done:!!pE,onToggle:toggle,chips:pE?[e(Chip,{key:'d',value:'Doors: '+(S.doors||'none')})]:null},
           isPeriod?e('div',{style:{marginBottom:16}},e(SysLabel,{text:'Period features'}),grid(2,[{v:'yes',l:'Restore features',sub:'Cornicing, roses, dado'},{v:'no',l:'No period restoration'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.periodFeatures===t.v,onClick:function(){set('periodFeatures',t.v);}});}))):null,
-          e(SysLabel,{text:'Windows'}),e(MultiSel,{label:'Window works',values:S.windowTypes,onToggle:function(v){setMulti('windowTypes',v);},cols:2,options:[{v:'none',l:'No window works'},{v:'replace',l:'Replace windows'},{v:'new',l:'New openings'},{v:'sash',l:'Sash restoration'}]}),
+          e(SysLabel,{text:'Windows'}),e(MultiSel,{label:'Window works',values:S.windowTypes,onToggle:toggleWindow,cols:2,options:[{v:'none',l:'No window works'},{v:'replace',l:'Replace windows'},{v:'new',l:'New openings'},{v:'sash',l:'Sash restoration'}]}),
           S.windowTypes.indexOf('replace')>=0?e(Stepper,{label:'Windows to replace',value:S.replaceCount,onChange:function(v){set('replaceCount',v);},min:0,max:30}):null,
           S.windowTypes.indexOf('new')>=0?e(Stepper,{label:'New openings',value:S.newOpenings,onChange:function(v){set('newOpenings',v);},min:0,max:10}):null,
-          S.windowTypes.indexOf('sash')>=0?e(Stepper,{label:'Sash windows',value:S.sashCount,onChange:function(v){set('sashCount',v);},min:0,max:20}):null,
+          S.windowTypes.indexOf('sash')>=0?e(Stepper,{label:'Sash windows',value:S.sashCount,onChange:function(v){set('sashCount',v);},min:0,max:30}):null,
           e(SysLabel,{text:'External doors',mt:8}),grid(2,[{v:'none',l:'No door works'},{v:'front',l:'Front door'},{v:'back',l:'Back door'},{v:'both',l:'Both'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.doors===t.v,onClick:function(){set('doors',t.v);}});})),
           e(SysLabel,{text:'Rooflights',mt:8}),grid(3,[{v:'none',l:'None'},{v:'1',l:'1 rooflight'},{v:'2plus',l:'2+ rooflights'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.rooflights===t.v,onClick:function(){set('rooflights',t.v);}});}))
         ),
@@ -870,7 +896,7 @@ function Calculator() {
           e(SysLabel,{text:'Ventilation',mt:8}),grid(3,[{v:'none',l:'None'},{v:'extractors',l:'Extractor fans',sub:'\u00A3600\u2013\u00A31.8k'},{v:'mvhr',l:'MVHR system',sub:'\u00A33.5\u2013\u00A312k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.ventilation===t.v,onClick:function(){set('ventilation',t.v);}});})),
           e(SysLabel,{text:'Smart home / AV',mt:8}),grid(3,[{v:'none',l:'None'},{v:'basic',l:'Basic smart',sub:'\u00A31.5\u2013\u00A34k'},{v:'full',l:'Full system',sub:'\u00A310\u2013\u00A325k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.smart===t.v,onClick:function(){set('smart',t.v);}});})),
           e(SysLabel,{text:'Radiators',mt:8}),grid(2,[{v:'no',l:'Keep existing radiators'},{v:'yes',l:'Replace radiators'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.replaceRads===t.v,onClick:function(){set('replaceRads',t.v);}});})),
-          S.replaceRads==='yes'?e('div',null,e(Stepper,{label:'Number of radiators',value:S.radCount,onChange:function(v){set('radCount',v);},min:1,max:30}),grid(3,[{v:'standard',l:'Standard',sub:'\u00A3250\u2013\u00A3450'},{v:'premium',l:'Premium',sub:'\u00A3500\u2013\u00A31.2k'},{v:'designer',l:'Designer',sub:'\u00A31.2\u2013\u00A33.5k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.radTier===t.v,onClick:function(){set('radTier',t.v);}});}))):null
+          S.replaceRads==='yes'?e('div',null,e(Stepper,{label:'Number of radiators',value:S.radCount,onChange:function(v){set('radCount',v);},min:1,max:25}),grid(3,[{v:'standard',l:'Standard',sub:'\u00A3250\u2013\u00A3450'},{v:'premium',l:'Premium',sub:'\u00A3500\u2013\u00A31.2k'},{v:'designer',l:'Designer',sub:'\u00A31.2\u2013\u00A33.5k'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.radTier===t.v,onClick:function(){set('radTier',t.v);}});}))):null
         ),
         // H: Kitchen
         e(AccSection,{id:'kitchen',title:'Kitchen',expanded:expanded==='kitchen',locked:!pG,done:!!pH,onToggle:toggle,chips:pH?[e(Chip,{key:'k',value:S.kitchenScope==='keep'?'Keep':S.kitchenScope==='none'?'None':(S.kitTier||'')})]:null},
@@ -879,11 +905,11 @@ function Calculator() {
         ),
         // I: Bathrooms & furniture
         e(AccSection,{id:'bath-furn',title:'Bathrooms and furniture',expanded:expanded==='bath-furn',locked:!pH,done:!!pI,onToggle:toggle,chips:pI?[e(Chip,{key:'ba',value:S.bathrooms+' bath'}),e(Chip,{key:'bt',value:S.bathTier||''})]:null},
-          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bathrooms',value:S.bathrooms,onChange:function(v){set('bathrooms',v);},min:0}),e(Stepper,{label:'Cloakrooms',value:S.cloakrooms,onChange:function(v){set('cloakrooms',v);},min:0})),
+          e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}},e(Stepper,{label:'Bathrooms',value:S.bathrooms,onChange:function(v){set('bathrooms',v);},min:0,max:6}),e(Stepper,{label:'Cloakrooms',value:S.cloakrooms,onChange:function(v){set('cloakrooms',v);},min:0,max:3})),
           S.bathrooms>0?e('div',null,e(SysLabel,{text:'Bathroom tier'}),grid(3,[{v:'standard',l:'Standard',sub:'Roca/Ideal Standard'},{v:'premium',l:'Premium',sub:'Duravit/Hansgrohe'},{v:'designer',l:'Designer',sub:'V+A/Dornbracht'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.bathTier===t.v,onClick:function(){set('bathTier',t.v);}});}))):null,
           e(SysLabel,{text:'Freestanding bath',mt:8}),grid(3,[{v:'none',l:'None'},{v:'1',l:'1 bath'},{v:'2plus',l:'2+ baths'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.freestandingBath===t.v,onClick:function(){set('freestandingBath',t.v);}});})),
           e(SysLabel,{text:'Bespoke furniture',mt:8}),grid(2,[{v:'no',l:'No bespoke furniture'},{v:'yes',l:'Yes \u2014 wardrobes / joinery'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.bespokeFurniture===t.v,onClick:function(){set('bespokeFurniture',t.v);}});})),
-          S.bespokeFurniture==='yes'?e('div',null,e(NumField,{label:'Linear metres',value:S.furnitureLM,onChange:function(v){set('furnitureLM',v);}}),grid(3,[{v:'standard',l:'Standard',sub:'2.2m'},{v:'full',l:'Full height',sub:'2.4m'},{v:'tall',l:'Tall / double',sub:'2.7m+'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureHeight===t.v,onClick:function(){set('furnitureHeight',t.v);}});})),grid(3,[{v:'standard',l:'Standard',sub:'\u00A31\u20131.3k/lm'},{v:'premium',l:'Premium',sub:'\u00A31.5\u20132k/lm'},{v:'designer',l:'Designer',sub:'\u00A32.2\u20133.2k/lm'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureTier===t.v,onClick:function(){set('furnitureTier',t.v);}});}))):null
+          S.bespokeFurniture==='yes'?e('div',null,e(NumField,{label:'Linear metres',value:S.furnitureLM,onChange:function(v){set('furnitureLM',Math.min(v,120));}}),grid(3,[{v:'standard',l:'Standard',sub:'2.2m'},{v:'full',l:'Full height',sub:'2.4m'},{v:'tall',l:'Tall / double',sub:'2.7m+'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureHeight===t.v,onClick:function(){set('furnitureHeight',t.v);}});})),grid(3,[{v:'standard',l:'Standard',sub:'\u00A31\u20131.3k/lm'},{v:'premium',l:'Premium',sub:'\u00A31.5\u20132k/lm'},{v:'designer',l:'Designer',sub:'\u00A32.2\u20133.2k/lm'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.furnitureTier===t.v,onClick:function(){set('furnitureTier',t.v);}});}))):null
         ),
         // J: Finishes
         e(AccSection,{id:'finishes',title:'Finishes',expanded:expanded==='finishes',locked:!pI,done:!!pJ,onToggle:toggle,chips:pJ?[e(Chip,{key:'fl',value:S.flooring}),e(Chip,{key:'de',value:S.decoration})]:null},
@@ -894,9 +920,9 @@ function Calculator() {
         // K: Structural
         e(AccSection,{id:'structural',title:'Structural works',expanded:expanded==='structural',locked:!pJ,done:!!pK,onToggle:toggle,chips:pK?[e(Chip,{key:'st',value:S.structural.indexOf('none')>=0?'None':S.structural.join(', ')})]:null},
           e(MultiSel,{label:'Structural items',sub:'Select all that apply',values:S.structural,onToggle:toggleStruct,cols:2,options:[{v:'none',l:'None'},{v:'walls',l:'Wall removal(s)'},{v:'loft',l:'Loft conversion'},{v:'extension',l:'Extension'},{v:'basement',l:'Basement'}]}),
-          S.structural.indexOf('loft')>=0?e(NumField,{label:'Loft area',value:S.loftRaw,onChange:function(v){set('loftRaw',v);},unit:S.loftUnit,onUnitChange:function(v){set('loftUnit',v);}}):null,
-          S.structural.indexOf('extension')>=0?e('div',null,e(NumField,{label:'Extension area',value:S.extRaw,onChange:function(v){set('extRaw',v);},unit:S.extUnit,onUnitChange:function(v){set('extUnit',v);}}),grid(2,[{v:'single',l:'Single storey'},{v:'double',l:'Double storey'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.storeys===t.v,onClick:function(){set('storeys',t.v);}});}))):null,
-          S.structural.indexOf('basement')>=0?e('div',null,e(NumField,{label:'Basement area',value:S.basRaw,onChange:function(v){set('basRaw',v);},unit:S.basUnit,onUnitChange:function(v){set('basUnit',v);}}),grid(2,[{v:'fitout',l:'Fit-out only',sub:'Existing void'},{v:'excavation',l:'Excavation',sub:'New dig'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.basType===t.v,onClick:function(){set('basType',t.v);}});}))):null
+          S.structural.indexOf('loft')>=0?e(NumField,{label:'Loft area',value:S.loftRaw,onChange:function(v){set('loftRaw',Math.min(v,200));},unit:S.loftUnit,onUnitChange:function(v){set('loftUnit',v);}}):null,
+          S.structural.indexOf('extension')>=0?e('div',null,e(NumField,{label:'Extension area',value:S.extRaw,onChange:function(v){set('extRaw',Math.min(v,150));},unit:S.extUnit,onUnitChange:function(v){set('extUnit',v);}}),grid(2,[{v:'single',l:'Single storey'},{v:'double',l:'Double storey'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,selected:S.storeys===t.v,onClick:function(){set('storeys',t.v);}});}))):null,
+          S.structural.indexOf('basement')>=0?e('div',null,e(NumField,{label:'Basement area',value:S.basRaw,onChange:function(v){set('basRaw',Math.min(v,300));},unit:S.basUnit,onUnitChange:function(v){set('basUnit',v);}}),grid(2,[{v:'fitout',l:'Fit-out only',sub:'Existing void'},{v:'excavation',l:'Excavation',sub:'New dig'}].map(function(t){return e(OptBtn,{key:t.v,label:t.l,sub:t.sub,selected:S.basType===t.v,onClick:function(){set('basType',t.v);}});}))):null
         ),
         // L: External & programme
         e(AccSection,{id:'external',title:'External works and programme',expanded:expanded==='external',locked:!pK,done:!!pL,onToggle:toggle,chips:pL?[e(Chip,{key:'ex',value:S.external.indexOf('none')>=0?'None':S.external.join(', ')}),e(Chip,{key:'pr',value:S.programme})]:null},
@@ -939,13 +965,15 @@ function Calculator() {
           // MED-02: kit-bath with no kitchen/bath/cloak
           (allDone && est === null && !showSpinner && S.scope === 'kit-bath' && (S.kitchenScope === 'none' || !S.kitchenScope) && (S.bathrooms || 0) === 0 && (S.cloakrooms || 0) === 0) ?
             e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'rgba(255,255,255,0.25)', minHeight:80, display:'flex', alignItems:'center', lineHeight:1.6 }}, "You've selected kitchen & bathroom but haven't chosen either. Pick at least one.") :
-          // HIGH-01: ceiling cap — replace figures with Calendly CTA
+          // HIGH-01: ceiling cap — replace figures with an advisory message.
+          // Bug #6 fix: no BOOK A CALL button here. The user can still click
+          // SEND ME FULL BREAKDOWN (rendered below) to receive the detailed
+          // figures by email. Calendly CTAs live in the ContactModal confirm
+          // state and in the Z3 section — no need to duplicate them here.
           (estimateRevealed && est && est.ceilingCapped === true) ?
             e('div', { style:{ minHeight:80, animation:'estFadeIn 400ms ease both' } },
               e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:14, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.06)', lineHeight:1.6 }}, 'This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement.'),
-              e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6, marginBottom:16 }}, 'At this scale, a parametric estimate is indicative at best.'),
-              e('a', { href:'https://calendly.com/team-myrmexgroup/30min', target:'_blank', rel:'noopener noreferrer',
-                style:{ display:'inline-flex', alignItems:'center', justifyContent:'center', height:44, padding:'0 24px', background:'transparent', border:'1.5px solid #00978D', borderRadius:4, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#00978D', textDecoration:'none', textTransform:'uppercase', letterSpacing:'0.08em', cursor:'pointer' }}, 'BOOK A CALL')) :
+              e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}, 'At this scale, a parametric estimate is indicative at best. Request the full breakdown below to see the detailed figures.')) :
           estimateRevealed && est ?
             e('div', { style:{ animation:'estFadeIn 400ms ease both' } },
               // CRIT-04: disclaimer moved ABOVE figures, raised to 13px, white-tinted
