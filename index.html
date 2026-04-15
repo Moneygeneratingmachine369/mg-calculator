@@ -619,11 +619,17 @@ function ContactModal(props) {
       calculatorVersion: CALCULATOR_VERSION
     };
     setPhase('sending');
-    fetch(API_BASE + '/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'omit',
-      body: JSON.stringify(payload)
+    // MG-SYS-003: /submit now requires X-MG-Token. Fetch the token first, then POST.
+    getToken().then(function(token) {
+      return fetch(API_BASE + '/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-MG-Token': token
+        },
+        credentials: 'omit',
+        body: JSON.stringify(payload)
+      });
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -702,11 +708,12 @@ function Calculator() {
   var toggleStruct = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.structural = ['none']; return n; } var arr = (n.structural || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.structural = arr; return n; }); }, []);
   var toggleExt = useCallback(function(v) { setS(function(p) { var n = {}; for (var x in p) n[x] = p[x]; if (v === 'none') { n.external = ['none']; n.gardenSize = null; return n; } var arr = (n.external || []).filter(function(x){return x!=='none';}); var idx = arr.indexOf(v); if (idx >= 0) arr.splice(idx,1); else arr.push(v); n.external = arr; return n; }); }, []);
   useEffect(function() { if (S.propertyType === 'period-flat' || S.propertyType === 'newbuild-flat') set('arrangement', 'flat'); }, [S.propertyType]);
-  // MG-SYS-003: server-side estimate via /api/estimate. Replaces the
-  // client-side useMemo(recalc). One-shot fetch fires only when allDone
-  // becomes true (see useEffect below panel-completion flags).
+  // MG-SYS-003: server-side estimate via /api/estimate. User clicks
+  // "GENERATE ESTIMATE" to fire the fetch explicitly — no automatic
+  // fire on allDone. A 5-minute cooldown rate-limits re-generations.
   var _est = useState(null); var est = _est[0]; var setEst = _est[1];
   var _estErr = useState(null); var estError = _estErr[0]; var setEstError = _estErr[1];
+  var _genCd = useState(0); var genCooldown = _genCd[0]; var setGenCooldown = _genCd[1];
   var toggle = function(id) {
     setExpanded(function(x) { return x === id ? null : id; });
     // Scroll the opened section to the top of the viewport after React re-renders
@@ -735,31 +742,62 @@ function Calculator() {
   var pL = pK && S.external.length > 0 && (S.external.indexOf('garden') < 0 || S.gardenSize) && S.programme && S.purpose;
   var allDone = !!pL;
   var doneCount = [pA,pB,pC,pD,pE,pF,pG,pH,pI,pJ,pK,pL].filter(Boolean).length;
-  // MG-SYS-003: when all 12 panels complete, fire one /api/estimate request
-  // and reveal the result when it arrives. Spinner shows during the fetch.
+  // MG-SYS-003 GENERATE/SEND flow:
+  //   1. User completes all 12 panels.
+  //   2. User clicks GENERATE ESTIMATE → fetchEstimate → figures appear.
+  //   3. User clicks SEND ME FULL BREAKDOWN → ContactModal → email delivery.
+  //   4. 5-minute cooldown per generation prevents hammering.
+  //   5. Editing any input after reveal clears the figures but keeps the
+  //      cooldown ticking (user can't regenerate until it expires).
+
+  // Countdown timer for the regeneration cooldown.
   useEffect(function() {
-    if (allDone && !estimateRevealed) {
-      setShowSpinner(true);
-      setEstError(null);
-      fetchEstimate(S, function(result) {
-        setEst(result);
-        setShowSpinner(false);
-        setEstimateRevealed(true);
-      }, function(errMsg) {
-        setEstError(errMsg);
-        setShowSpinner(false);
+    if (genCooldown <= 0) return;
+    var t = setInterval(function() {
+      setGenCooldown(function(c) {
+        if (c <= 1) { clearInterval(t); return 0; }
+        return c - 1;
       });
-    }
-  }, [allDone]);
-  // Re-hide when user un-answers a panel after seeing the estimate.
+    }, 1000);
+    return function() { clearInterval(t); };
+  }, [genCooldown > 0]);
+
+  // Clear the revealed estimate when any input changes — user must re-generate.
+  // Cooldown is NOT reset; they still have to wait for the 5-minute window.
+  var sKey = JSON.stringify(S);
   useEffect(function() {
-    if (!allDone && estimateRevealed) {
+    if (estimateRevealed) {
       setEstimateRevealed(false);
-      setShowSpinner(false);
       setEst(null);
       setEstError(null);
+      setShowSpinner(false);
     }
-  }, [allDone]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sKey]);
+
+  // GENERATE button handler — user-initiated fetch.
+  var handleGenerate = function() {
+    if (!allDone || genCooldown > 0 || showSpinner) return;
+    setShowSpinner(true);
+    setEstError(null);
+    fetchEstimate(S, function(result) {
+      setEst(result);
+      setShowSpinner(false);
+      setEstimateRevealed(true);
+      setGenCooldown(300); // 5 minutes
+      setSentEstMid(null); // reset sent state so the SEND button re-arms
+    }, function(errMsg) {
+      setEstError(errMsg);
+      setShowSpinner(false);
+    });
+  };
+
+  // Cooldown display formatter — "4:52" for 292 seconds.
+  var fmtCooldown = function(secs) {
+    var m = Math.floor(secs / 60);
+    var s = secs % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  };
   var typeL = {'period-house':'Period house','period-flat':'Period flat','newbuild-house':'New-build house','newbuild-flat':'New-build flat'};
   var zoneL = {z1:'Zone 1',z2:'Zone 2',z3:'Zone 3','z4-6':'Zone 4\u20136'};
 
@@ -930,19 +968,76 @@ function Calculator() {
           e('div', { style:{ borderTop:'1px solid rgba(255,255,255,0.06)', margin:'16px 0' } }),
           // SEND button — locked if already sent for this estimate
           (function(){
-            var canSend = allDone && estimateRevealed && !(sentEstMid !== null && est && est.mid === sentEstMid);
+            // MG-SYS-003 button state machine:
+            //   State 0 — NOT READY: !allDone → "GENERATE ESTIMATE" dimmed
+            //   State 1 — READY: allDone && !estimateRevealed && !showSpinner → "GENERATE ESTIMATE" orange, enabled if cooldown==0
+            //   State 2 — SENDING (spinner) → same as State 1 but cursor/disabled
+            //   State 3 — REVEALED: estimateRevealed && est && !alreadySent → "SEND ME FULL BREAKDOWN" orange
+            //   State 4 — SENT: alreadySent → "BREAKDOWN SENT" teal ghost + cooldown text
             var alreadySent = sentEstMid !== null && est && est.mid === sentEstMid;
+            var showSendBtn = estimateRevealed && est && !alreadySent;
+            var canGenerate = allDone && genCooldown === 0 && !showSpinner && !estimateRevealed;
+            var orangeStyleOn = { width:'100%', padding:'12px 0', background:'#EB5324', border:'1px solid #EB5324', borderRadius:6, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'#fff', cursor:'pointer', textTransform:'uppercase', letterSpacing:'0.08em', transition:'all 150ms' };
+            var orangeStyleOff = { width:'100%', padding:'12px 0', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:6, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'rgba(255,255,255,0.15)', cursor:'default', textTransform:'uppercase', letterSpacing:'0.08em', transition:'all 150ms' };
+            var tealGhostStyle = { width:'100%', padding:'12px 0', background:'rgba(0,151,141,0.12)', border:'1px solid rgba(0,151,141,0.25)', borderRadius:6, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:'rgba(0,151,141,0.5)', cursor:'default', textTransform:'uppercase', letterSpacing:'0.08em', transition:'all 150ms' };
+            var helperStyle = { fontFamily:"'IBM Plex Mono',monospace", fontSize:11, color:'rgba(255,255,255,0.3)', textAlign:'center', marginTop:8 };
+            var helperMutedStyle = { fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:8 };
+            var tealHelperStyle = { fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(0,151,141,0.4)', textAlign:'center', marginTop:8 };
+
+            // Button label + click + style resolved per state:
+            var btnLabel, btnStyle, btnClick, helperNode;
+            if (alreadySent) {
+              // State 4 — SENT
+              btnLabel = 'Breakdown sent';
+              btnStyle = tealGhostStyle;
+              btnClick = function(){};
+              if (genCooldown > 0) {
+                helperNode = e('div', { style:helperStyle }, 'You can generate a new estimate in ' + fmtCooldown(genCooldown));
+              } else {
+                helperNode = e('div', { style:tealHelperStyle }, 'Adjust scope to generate a new estimate.');
+              }
+            } else if (showSendBtn) {
+              // State 3 — REVEALED: ready to SEND
+              btnLabel = 'Send me full breakdown';
+              btnStyle = orangeStyleOn;
+              btnClick = function(){ setShowModal(true); };
+              helperNode = null;
+            } else if (!allDone) {
+              // State 0 — NOT READY
+              btnLabel = 'Generate estimate';
+              btnStyle = orangeStyleOff;
+              btnClick = function(){};
+              helperNode = e('div', { style:helperMutedStyle }, 'Complete sections to unlock.');
+            } else {
+              // State 1/2 — READY to GENERATE (or spinner mid-fetch)
+              btnLabel = 'Generate estimate';
+              if (canGenerate) {
+                btnStyle = orangeStyleOn;
+                btnClick = handleGenerate;
+                helperNode = null;
+              } else {
+                btnStyle = orangeStyleOff;
+                btnClick = function(){};
+                if (genCooldown > 0) {
+                  helperNode = e('div', { style:helperStyle }, 'You can generate a new estimate in ' + fmtCooldown(genCooldown));
+                } else if (showSpinner) {
+                  helperNode = e('div', { style:helperMutedStyle }, 'Generating\u2026');
+                } else {
+                  helperNode = null;
+                }
+              }
+            }
+
             return e(React.Fragment, null,
-              e('button', { onClick:function(){ if(canSend) setShowModal(true); },
-                onMouseOver:function(ev){ if(canSend) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
-                onMouseOut:function(ev){ if(canSend) { ev.target.style.background='#EB5324'; ev.target.style.borderColor='#EB5324'; } },
-                onMouseDown:function(ev){ if(canSend) { ev.target.style.background='#A83A1A'; ev.target.style.borderColor='#A83A1A'; } },
-                onMouseUp:function(ev){ if(canSend) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
-                style:{ width:'100%', padding:'12px 0', background:canSend?'#EB5324':alreadySent?'rgba(0,151,141,0.12)':'rgba(255,255,255,0.04)', border:'1px solid '+(canSend?'#EB5324':alreadySent?'rgba(0,151,141,0.25)':'rgba(255,255,255,0.06)'), borderRadius:6, fontFamily:"'Space Grotesk',sans-serif", fontWeight:600, fontSize:13, color:canSend?'#fff':alreadySent?'rgba(0,151,141,0.5)':'rgba(255,255,255,0.15)', cursor:canSend?'pointer':'default', textTransform:'uppercase', letterSpacing:'0.08em', transition:'all 150ms' }}, alreadySent ? 'Breakdown sent' : 'Send me full breakdown'),
-              // Helper text
-              !allDone ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:8 }}, 'Complete sections to unlock.') :
-              !estimateRevealed ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(255,255,255,0.25)', textAlign:'center', marginTop:8 }}, 'Processing estimate\u2026') :
-              alreadySent ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:12, color:'rgba(0,151,141,0.4)', textAlign:'center', marginTop:8 }}, 'Adjust scope to generate a new estimate.') : null);
+              e('button', {
+                onClick: btnClick,
+                onMouseOver: function(ev){ if (btnStyle === orangeStyleOn) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+                onMouseOut:  function(ev){ if (btnStyle === orangeStyleOn) { ev.target.style.background='#EB5324'; ev.target.style.borderColor='#EB5324'; } },
+                onMouseDown: function(ev){ if (btnStyle === orangeStyleOn) { ev.target.style.background='#A83A1A'; ev.target.style.borderColor='#A83A1A'; } },
+                onMouseUp:   function(ev){ if (btnStyle === orangeStyleOn) { ev.target.style.background='#C94420'; ev.target.style.borderColor='#C94420'; } },
+                style: btnStyle
+              }, btnLabel),
+              helperNode);
           }()))
     )) // end card frame + right column
 
