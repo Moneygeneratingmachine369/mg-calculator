@@ -717,7 +717,22 @@ function Calculator() {
   // fire on allDone. A 5-minute cooldown rate-limits re-generations.
   var _est = useState(null); var est = _est[0]; var setEst = _est[1];
   var _estErr = useState(null); var estError = _estErr[0]; var setEstError = _estErr[1];
-  var _genCd = useState(0); var genCooldown = _genCd[0]; var setGenCooldown = _genCd[1];
+  // Bug #7 fix: rehydrate the cooldown synchronously via a lazy useState
+  // initializer. This avoids the useEffect-ordering race where the timer
+  // useEffect would see the initial 0 value and wipe sessionStorage before
+  // the async setGenCooldown(remaining) from an init useEffect could flush.
+  var _genCd = useState(function() {
+    try {
+      var stored = sessionStorage.getItem('mg_cooldown_expires');
+      if (stored) {
+        var remaining = Math.max(0, Math.ceil((Number(stored) - Date.now()) / 1000));
+        if (remaining > 0) return remaining;
+        sessionStorage.removeItem('mg_cooldown_expires');
+      }
+    } catch (e) {}
+    return 0;
+  });
+  var genCooldown = _genCd[0]; var setGenCooldown = _genCd[1];
   var toggle = function(id) {
     setExpanded(function(x) { return x === id ? null : id; });
     // Scroll the opened section to the top of the viewport after React re-renders
@@ -754,31 +769,21 @@ function Calculator() {
   //   5. Editing any input after reveal clears the figures but keeps the
   //      cooldown ticking (user can't regenerate until it expires).
 
-  // Bug #7: rehydrate the cooldown from sessionStorage on mount so a page
-  // refresh doesn't reset the timer. Uses sessionStorage (not localStorage)
-  // so closing the tab clears it. All calls wrapped in try/catch — some
-  // browsers block sessionStorage in private mode.
+  // Countdown timer for the regeneration cooldown. Cleanup only fires when
+  // the counter naturally ticks through zero (inside setInterval), NOT on
+  // the early-return branch — that branch runs on every mount with
+  // genCooldown=0 and would wipe sessionStorage before the lazy rehydrate
+  // could take effect. sessionStorage cleanup lives at the bottom of the
+  // interval callback where c<=1 is true.
   useEffect(function() {
-    try {
-      var stored = sessionStorage.getItem('mg_cooldown_expires');
-      if (stored) {
-        var remaining = Math.max(0, Math.ceil((Number(stored) - Date.now()) / 1000));
-        if (remaining > 0) setGenCooldown(remaining);
-        else sessionStorage.removeItem('mg_cooldown_expires');
-      }
-    } catch (e) {}
-  }, []);
-
-  // Countdown timer for the regeneration cooldown.
-  useEffect(function() {
-    if (genCooldown <= 0) {
-      // Clean up the stored expiry when the cooldown hits zero naturally.
-      try { sessionStorage.removeItem('mg_cooldown_expires'); } catch (e) {}
-      return;
-    }
+    if (genCooldown <= 0) return;
     var t = setInterval(function() {
       setGenCooldown(function(c) {
-        if (c <= 1) { clearInterval(t); return 0; }
+        if (c <= 1) {
+          clearInterval(t);
+          try { sessionStorage.removeItem('mg_cooldown_expires'); } catch (e) {}
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -965,15 +970,6 @@ function Calculator() {
           // MED-02: kit-bath with no kitchen/bath/cloak
           (allDone && est === null && !showSpinner && S.scope === 'kit-bath' && (S.kitchenScope === 'none' || !S.kitchenScope) && (S.bathrooms || 0) === 0 && (S.cloakrooms || 0) === 0) ?
             e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:12, color:'rgba(255,255,255,0.25)', minHeight:80, display:'flex', alignItems:'center', lineHeight:1.6 }}, "You've selected kitchen & bathroom but haven't chosen either. Pick at least one.") :
-          // HIGH-01: ceiling cap — replace figures with an advisory message.
-          // Bug #6 fix: no BOOK A CALL button here. The user can still click
-          // SEND ME FULL BREAKDOWN (rendered below) to receive the detailed
-          // figures by email. Calendly CTAs live in the ContactModal confirm
-          // state and in the Z3 section — no need to duplicate them here.
-          (estimateRevealed && est && est.ceilingCapped === true) ?
-            e('div', { style:{ minHeight:80, animation:'estFadeIn 400ms ease both' } },
-              e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:13, color:'rgba(255,255,255,0.5)', marginBottom:14, paddingBottom:10, borderBottom:'1px solid rgba(255,255,255,0.06)', lineHeight:1.6 }}, 'This is an indicative estimate only. It does not constitute a quotation, offer, or contract. Actual costs are confirmed during the Pre-Construction Services Agreement.'),
-              e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, color:'rgba(255,255,255,0.5)', lineHeight:1.6 }}, 'At this scale, a parametric estimate is indicative at best. Request the full breakdown below to see the detailed figures.')) :
           estimateRevealed && est ?
             e('div', { style:{ animation:'estFadeIn 400ms ease both' } },
               // CRIT-04: disclaimer moved ABOVE figures, raised to 13px, white-tinted
@@ -989,6 +985,10 @@ function Calculator() {
               e('div', { style:{ display:'flex', alignItems:'baseline', gap:8 } },
                 e('span', { style:{ fontFamily:"'Orbitron',sans-serif", fontSize:9, letterSpacing:'0.12em', color:'rgba(255,255,255,0.3)', textTransform:'uppercase', width:36 }}, 'High'),
                 e('span', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:400, fontSize:14, color:'rgba(0,151,141,0.6)' }}, fmt(est.high))),
+              // HIGH-01: ceiling cap advisory — figures are still shown, this text sits below
+              // them. The user sees what the parametric model output, with a note that at
+              // this scale a richer conversation is warranted.
+              est.ceilingCapped === true ? e('div', { style:{ fontFamily:"'Space Grotesk',sans-serif", fontSize:13, color:'rgba(255,255,255,0.5)', marginTop:12, paddingTop:10, borderTop:'1px solid rgba(255,255,255,0.06)', lineHeight:1.6 }}, 'At this scale, a parametric estimate is indicative at best.') : null,
               // HIGH-09: timeline programme caveat (only if backend returned timeline data)
               est.timeline && e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontSize:10, color:'rgba(255,255,255,0.25)', marginTop:10, fontStyle:'italic' }}, 'Preliminary programme only. Confirmed during PCSA.')) :
             e('div', { style:{ fontFamily:"'IBM Plex Mono',monospace", fontWeight:500, fontSize:22, color:'rgba(255,255,255,0.08)', minHeight:80, display:'flex', alignItems:'center' }}, '\u2014 \u2014'),
